@@ -1,135 +1,169 @@
+<div align="center">
+
 # 🚀 SupplyGo
 
-### Connecting Supply. Simplifying Delivery.
+### Connect Smarter. Deliver Faster.
 
-**A Real-Time Distributed Supply Chain Management & Delivery Optimization System**
+**A Real-Time Networked Supply Chain Management & Delivery Optimization System**
 
-![Java](https://img.shields.io/badge/Java-21-orange)
-![Networking](https://img.shields.io/badge/Networking-TCP%2FIP-blue)
-![Multithreading](https://img.shields.io/badge/Concurrency-Multithreaded-green)
-![Status](https://img.shields.io/badge/Status-In%20Development-yellow)
+[![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com/)
+![TCP/IP](https://img.shields.io/badge/Networking-TCP%2FIP-2563eb?style=for-the-badge)
+![Concurrency](https://img.shields.io/badge/Concurrency-Multithreaded-16a34a?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-In%20Development-f59e0b?style=for-the-badge)
+
+**Connecting suppliers, sellers, and managers through smarter networking.**
+
+[Overview](#-overview) · [Features](#-planned-features) · [Architecture](#-system-architecture) · [Roadmap](#-development-roadmap) · [Team](#-meet-the-team)
+
+</div>
 
 ---
 
-## 🌟 About SupplyGo
+## 🌍 Overview
 
-**SupplyGo** is a Java-based distributed supply chain management platform designed to connect suppliers, sellers, and managers through a real-time network.
+**SupplyGo** is a Java-based academic project focused on building a **real-time, multi-client supply chain platform**. It aims to connect suppliers, sellers, and managers through a centralized server, enabling order coordination, shared inventory updates, and delivery planning.
 
-Our mission is simple:
+Rather than a traditional standalone inventory application, SupplyGo is designed to demonstrate **socket programming, concurrent client handling, and thread-safe shared data**.
 
-**Connect smarter. Manage faster. Deliver better.**
+> **Our vision:** Every supply connection should be simple, responsive, and reliable.
 
-SupplyGo combines Java socket programming, concurrent processing, inventory synchronization, and intelligent delivery optimization to create an efficient supply chain management experience.
+### 🎯 Project Objectives
 
-This project is being developed for **EC5205 – Operating System and Network Programming** at the University of Ruhuna.
+- Establish reliable communication between multiple Java clients and a central TCP server.
+- Process simultaneous client requests using Java threads or an `ExecutorService`.
+- Protect shared inventory and order data against concurrent updates.
+- Deliver real-time order-status notifications to connected clients.
+- Explore delivery route optimization using **Dijkstra's shortest-path algorithm**.
 
 ## ✨ Planned Features
 
-- 📦 **Supplier Management** — Manage products, availability, and incoming orders.
-- 🛒 **Seller Management** — Browse products, place orders, and track deliveries.
-- 🌐 **Real-Time Networking** — TCP socket communication between connected clients.
-- ⚡ **Concurrent Processing** — Handle multiple users using Java multithreading.
-- 🔐 **Inventory Synchronization** — Prevent stock conflicts during simultaneous orders.
-- 🔔 **Live Notifications** — Receive instant order and delivery updates.
-- 🚚 **Delivery Optimization** — Find efficient routes using Dijkstra's algorithm.
-- 📊 **Management Dashboard** — Monitor supply chain activities.
+| Module | Planned capabilities |
+| :--- | :--- |
+| 📦 **Supplier Hub** | Manage products, update stock, receive and process orders |
+| 🛒 **Seller Portal** | View stock, place orders, track order status |
+| 📊 **Manager Console** | Monitor suppliers, orders, inventory, and system activity |
+| 🌐 **Live TCP Networking** | Connect multiple Java clients through socket communication |
+| ⚡ **Concurrent Server** | Handle simultaneous users with multithreading |
+| 🔒 **Safe Inventory Updates** | Synchronize critical stock changes to avoid conflicts |
+| 🔔 **Instant Updates** | Send order and delivery-status notifications |
+| 🚚 **Smart Routing** | Use graph algorithms to explore efficient delivery routes |
 
-## 🏗️ Proposed System Architecture
+## 🏗️ System Architecture
 
 ```text
-       SUPPLYGO NETWORK
-
-  Supplier  Seller  Manager
-     |        |        |
-     +--------+--------+
-              |
-        TCP/IP Sockets
-              |
-      Java Central Server
-              |
-     Multithreaded Engine
-              |
-     +--------+--------+
-     |        |        |
-   Orders  Inventory  Routes
-              |
-        Data Storage
+  +----------------+    +----------------+    +----------------+
+  | Supplier Client|    |  Seller Client |    | Manager Client |
+  +--------+-------+    +--------+-------+    +--------+-------+
+           |                     |                     |
+           +---------------------+---------------------+
+                                 |
+                          TCP/IP Network
+                                 |
+                    +------------v------------+
+                    |    Java Socket Server   |
+                    |  ServerSocket + Threads |
+                    +------------+------------+
+                                 |
+              +------------------+------------------+
+              |                  |                  |
+        Order Service     Inventory Service   Route Service
+              |                  |                  |
+              +------------------+------------------+
+                                 |
+                       Persistence (planned)
 ```
 
-## 🛠️ Technology Stack
+### 🔄 Example Order Journey
 
-| Component | Technology |
-|---|---|
-| Language | Java |
-| Networking | TCP/IP, Java Sockets |
-| Concurrency | Java Threads, ExecutorService |
-| Synchronization | Java Concurrency Utilities |
-| Interface | Java Swing |
-| Database | SQLite (planned) |
-| Algorithms | Dijkstra, Priority Queues |
-| Development | Visual Studio Code |
-| Version Control | Git & GitHub |
+1. A **seller** submits a product order.
+2. The **server** checks inventory and safely reserves available stock.
+3. The relevant **supplier** receives an order notification.
+4. The supplier updates the order's processing or delivery status.
+5. The **seller and manager** receive the updated status.
+6. The route service can calculate a suitable delivery path.
 
-## 📂 Proposed Project Structure
+## 🧰 Technology Stack
+
+| Area | Technology |
+| :--- | :--- |
+| Programming language | **Java** (JDK 21 recommended) |
+| Networking | TCP/IP, `Socket`, `ServerSocket` |
+| Concurrency | Java Threads, `ExecutorService` |
+| Synchronization | Java concurrency utilities |
+| Desktop interface | Java Swing *(planned)* |
+| Persistence | SQLite *(planned)* |
+| Algorithms | Dijkstra's algorithm, priority queues |
+| IDE | Visual Studio Code |
+| Collaboration | Git & GitHub |
+
+## 📁 Proposed Project Structure
 
 ```text
 SupplyGo/
 ├── src/
-│   ├── server/
-│   ├── client/
-│   ├── model/
-│   ├── service/
-│   ├── network/
-│   └── gui/
-├── docs/
-├── tests/
+│   ├── main/java/com/supplygo/
+│   │   ├── server/       # Socket server and client handlers
+│   │   ├── client/       # Supplier, seller and manager clients
+│   │   ├── model/        # Product, order and user models
+│   │   ├── network/      # Message protocol and communication
+│   │   ├── service/      # Business logic and route optimization
+│   │   └── gui/          # Swing screens (planned)
+│   └── test/java/       # Tests
+├── docs/                 # Design and project documentation
 └── README.md
 ```
 
-*The structure will evolve during implementation.*
+*This layout is a proposal and may change during development.*
 
 ## 🗺️ Development Roadmap
 
-- [ ] Phase 1 — Project setup
-- [ ] Phase 2 — TCP server and client communication
-- [ ] Phase 3 — Multithreaded client handling
-- [ ] Phase 4 — Supplier and seller management
-- [ ] Phase 5 — Real-time order processing
-- [ ] Phase 6 — Inventory synchronization
-- [ ] Phase 7 — Delivery route optimization
-- [ ] Phase 8 — GUI development and integration
-- [ ] Phase 9 — Testing and documentation
+- [ ] **Phase 1:** Set up the Java project and agree on a message protocol
+- [ ] **Phase 2:** Implement TCP server and basic client communication
+- [ ] **Phase 3:** Support multiple clients concurrently
+- [ ] **Phase 4:** Implement supplier, seller, and manager operations
+- [ ] **Phase 5:** Add synchronized inventory and order processing
+- [ ] **Phase 6:** Implement real-time notifications
+- [ ] **Phase 7:** Integrate delivery route optimization
+- [ ] **Phase 8:** Develop the GUI and persistent storage
+- [ ] **Phase 9:** Test, document, and demonstrate the application
 
-## 👨‍💻 Development Team
+## 🧪 Testing Goals
 
-Developed as a collaborative university software engineering project.
+The project will aim to demonstrate:
 
-**Team collaborator:** [@gsubodha2023-hue](https://github.com/gsubodha2023-hue)
+- Two or more clients connected to the same server
+- Simultaneous order requests without inventory inconsistencies
+- Order updates received by other connected clients
+- Graceful handling of client disconnections
+- Correct shortest-path results on sample delivery networks
+
+## 👥 Meet the Team
+
+| Contributor | GitHub |
+| :--- | :--- |
+| Project member | [@uvinN20](https://github.com/uvinN20) |
+| Project member | [@gsubodha2023-hue](https://github.com/gsubodha2023-hue) |
 
 ## 🎓 Academic Context
 
-**Module:** EC5205 — Operating System and Network Programming
+**EC5205 — Operating System and Network Programming**  
+**University of Ruhuna**
 
-**Institution:** University of Ruhuna
-
-**Core Learning Areas:**
-- Operating systems
-- Client-server communication
-- Socket programming
-- Concurrent programming
-- Thread synchronization
-- Network application development
+The project focuses on **client-server communication, socket programming, concurrent execution, synchronization, and network application development**.
 
 ## 📌 Project Status
 
-🚧 **Currently in the planning and development stage.**
+> 🚧 **In development.** This README describes the intended architecture and planned functionality. Features should not be assumed to be implemented until corresponding source code and tests are added.
 
-Source code, setup instructions, screenshots, and demonstrations will be added as implementation progresses.
+Setup commands, screenshots, and usage instructions will be added as development progresses.
 
 ---
 
-### 💙 SupplyGo
+<div align="center">
 
+### 💙 SupplyGo
 **Smarter Connections. Stronger Supply Chains.**
 
 *Built with Java. Powered by Networking.*
+
+</div>
