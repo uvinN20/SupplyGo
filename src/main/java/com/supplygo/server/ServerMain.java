@@ -1,23 +1,36 @@
 package com.supplygo.server;
 
+import java.io.IOException;
 import com.supplygo.config.NetworkConfig;
 
-/** Backend launcher for the scaffold milestone; no socket listener is started yet. */
+/** Starts the TCP backend. Stop it with Ctrl+C to close all connections. */
 public final class ServerMain {
     private ServerMain() {
     }
 
     public static void main(String[] args) {
+        Thread shutdownHook = null;
         try {
             NetworkConfig config = NetworkConfig.load();
-            System.out.println("SupplyGo | Backend scaffold");
-            System.out.printf("Configured server endpoint: %s:%d%n", config.serverHost(), config.tcpPort());
-            System.out.printf("Configured UDP port: %d%n", config.udpPort());
-            System.out.println("Configuration validated. No TCP or UDP sockets are open in this milestone.");
-            System.out.println("Next milestone: TCP client-server request/response communication.");
-        } catch (IllegalArgumentException | IllegalStateException exception) {
+            String bindAddress = System.getProperty("supplygo.server.bind", "127.0.0.1");
+            try (SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort())) {
+                shutdownHook = new Thread(server::close, "supplygo-shutdown");
+                Runtime.getRuntime().addShutdownHook(shutdownHook);
+                System.out.printf("SupplyGo TCP server listening on %s:%d%n", bindAddress, server.port());
+                System.out.println("Supports PING and QUIT. Press Ctrl+C to stop. UDP is not started yet.");
+                server.serve();
+            }
+        } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
             System.err.println("Cannot launch SupplyGo server: " + exception.getMessage());
             System.exit(1);
+        } finally {
+            if (shutdownHook != null) {
+                try {
+                    Runtime.getRuntime().removeShutdownHook(shutdownHook);
+                } catch (IllegalStateException ignored) {
+                    // JVM shutdown already started; the hook owns cleanup.
+                }
+            }
         }
     }
 }
