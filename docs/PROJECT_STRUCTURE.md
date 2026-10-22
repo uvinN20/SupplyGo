@@ -14,12 +14,15 @@ remaining planned areas without adding empty business classes.
 | `config/NetworkConfig.java` | Immutable endpoint settings and validation | Implemented |
 | `client/SupplyGoTcpClient.java` | TCP socket, correlated requests and timeouts | Implemented |
 | `server/SupplyGoTcpServer.java` | Bounded concurrent accept loop and shutdown | Implemented |
-| `server/ClientHandler.java` | Per-connection request processing | Implemented |
+| `server/ClientHandler.java` | Per-connection request processing and TLS handshake | Implemented |
+| `server/RequestRouter.java` | Per-connection identity and authorization checks | Implemented |
+| `server/UserAdminMain.java` | Offline account provisioning | Implemented |
 | `protocol/` | Message types, requests, responses, JSON and framing | PING/QUIT implemented |
-| `model/` | Domain records and user roles | Package reserved |
-| `service/` | Server-side authorization and business rules | Package reserved |
+| `model/` | Public user profiles and six account roles | Implemented; supply-chain models follow |
+| `service/` | Authentication, login throttling and connection sessions | Implemented; business services follow |
 | `algorithm/` | Priority rankings, FIFO, Dijkstra routing | Package reserved |
-| `storage/` | Server-only persistence | Package reserved |
+| `storage/` | Locked, atomic account-file repository | Implemented; business repositories follow |
+| `security/` | Password hashing and JVM TLS context | Implemented |
 | `os/` | Separate scheduling, synchronization, memory, deadlock demos | Optional packages reserved |
 | `src/main/resources/` | Packaged configuration defaults | Implemented |
 | `src/test/java/com/supplygo/config/` | Configuration regression tests | Implemented |
@@ -45,7 +48,7 @@ requires them. Application inventory synchronization belongs in the services.
 
 ## Next milestone
 
-Build authentication and role-based authorization as a new vertical slice, then
-server-owned persistence and business operations. Extend the existing protocol
-with explicit schemas and duplicate-request rules before adding order mutations.
-UDP messenger and optional OS simulations remain separate tasks.
+Implement supplier/seller domain data and inventory operations with server-side
+role checks, then production and orders. Database-backed business persistence,
+UDP messenger and optional OS simulations remain separate tasks. See
+[AUTHENTICATION.md](AUTHENTICATION.md) for account setup.
