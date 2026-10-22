@@ -78,4 +78,17 @@ class ProtocolCodecTest {
         assertThrows(ProtocolException.class, () -> FrameIO.read(new ByteArrayInputStream(
                 ("x".repeat(FrameIO.MAX_FRAME_BYTES + 1) + "\n").getBytes(StandardCharsets.UTF_8))));
     }
+    @Test
+    void rejectsDuplicateKeysAndRedactsCredentialPayloads() throws Exception {
+        assertThrows(ProtocolException.class, () -> ProtocolCodec.decodeRequest(
+                "{\"version\":1,\"version\":2,\"requestId\":\"x\",\"type\":\"PING\",\"payload\":{}}"));
+        var payload = new com.google.gson.JsonObject();
+        payload.addProperty("username", "supplier");
+        payload.addProperty("password", "private password");
+        Request request = Request.create(MessageType.LOGIN, payload);
+        assertFalse(request.toString().contains("private password"));
+        payload.addProperty("role", "ADMIN");
+        assertFalse(request.payload().has("role"));
+        assertEquals(request, ProtocolCodec.decodeRequest(ProtocolCodec.encode(request)));
+    }
 }

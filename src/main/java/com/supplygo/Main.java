@@ -2,6 +2,8 @@ package com.supplygo;
 
 import com.supplygo.client.ClientMain;
 import com.supplygo.server.ServerMain;
+import com.supplygo.server.UserAdminMain;
+import java.util.Arrays;
 
 /** Optional command dispatcher; each application also has its own entry point. */
 public final class Main {
@@ -10,7 +12,11 @@ public final class Main {
 
     public static void main(String[] args) {
         if (args.length == 0 || (args.length == 1 && "--help".equals(args[0]))) {
-            System.out.println("Usage: java -jar target/supplygo-0.1.0-SNAPSHOT.jar <server|client>");
+            System.out.println("Usage: java -jar target/supplygo-0.1.0-SNAPSHOT.jar <server|client|create-user username ROLE>");
+            return;
+        }
+        if ("create-user".equals(args[0])) {
+            UserAdminMain.main(Arrays.copyOfRange(args, 1, args.length));
             return;
         }
         if (args.length != 1) {

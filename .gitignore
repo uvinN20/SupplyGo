@@ -15,3 +15,7 @@
 !/data/.gitkeep
 .DS_Store
 Thumbs.db
+/certs/
+*.p12
+*.jks
+*.key
