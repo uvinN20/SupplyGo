@@ -52,3 +52,11 @@ Implement supplier/seller domain data and inventory operations with server-side
 role checks, then production and orders. Database-backed business persistence,
 UDP messenger and optional OS simulations remain separate tasks. See
 [AUTHENTICATION.md](AUTHENTICATION.md) for account setup.
+
+## Inventory increment
+
+- `model/Product.java`, `model/FruitBatch.java`: validated stock records.
+- `storage/InventoryRepository.java`: locked JSON store and atomic replacement.
+- `service/InventoryService.java`: authorization, synchronized changes, FIFO and paging.
+- `ui/ClientWindow.java`: Inventory tab for products, batches and manager actions.
+- `docs/INVENTORY.md`: usage, stock units, concurrency and persistence limits.

@@ -128,3 +128,28 @@ There is no automatic retry; a registration whose reply was lost may already hav
 succeeded. Attempt normal sign-in rather than creating a duplicate.
 
 See [AUTHENTICATION.md](AUTHENTICATION.md) for credentials, stores and TLS setup.
+
+## Inventory requests (TLS and authenticated session required)
+
+| Type | Exact payload | Successful data |
+| --- | --- | --- |
+| `LIST_PRODUCTS` | `{"offset":0}` | `message: "PRODUCTS"`, `products`, `nextOffset` |
+| `LIST_BATCHES` | `{"offset":0}` | `message: "BATCHES"`, `batches`, `nextOffset` |
+| `CREATE_PRODUCT` | `{"productId":"APPLE","name":"Apple"}` | `message: "INVENTORY_UPDATED"` |
+| `RECEIVE_BATCH` | `{"productId":"APPLE","quantity":10}` | `message: "INVENTORY_UPDATED"` |
+| `WITHDRAW_STOCK` | `{"productId":"APPLE","quantity":5}` | `message: "INVENTORY_UPDATED"` |
+
+Offsets and quantities are JSON integers, not strings or decimals. Offsets range
+from 0 to 10000; quantities from 1 to 1000000 whole fruit units. Each page contains
+at most ten rows; `nextOffset` is -1 at the end. Product rows contain `id`, `name`,
+`quantity` (total units). Batch rows contain `id` (integer), `productId`, `quantity`,
+`receivedAt` (ISO-8601 UTC instant), `receivedBy` (server session username).
+Rows and payloads reject unknown fields. Existing 8192-byte frame limits apply.
+
+Only ADMIN and PRODUCTION_MANAGER may mutate inventory. All authenticated roles
+may list it. Additional error codes: `INVENTORY_UNAVAILABLE`, `INVALID_INVENTORY`,
+`PRODUCT_EXISTS`, `PRODUCT_NOT_FOUND`, `INSUFFICIENT_STOCK`, `INVENTORY_LIMIT`,
+`STORAGE_ERROR`; existing TLS/session/permission errors still apply. Application
+errors preserve the connection. See [INVENTORY.md](INVENTORY.md) for persistence,
+FIFO semantics, paging consistency and the warning about retrying an
+unacknowledged mutation.

@@ -18,12 +18,18 @@ import com.supplygo.protocol.Response;
 public final class ClientHandler implements Runnable {
     private final Socket socket;
     private final AuthService authentication;
+    private final com.supplygo.service.InventoryService inventory;
 
     public ClientHandler(Socket socket) {
         this(socket, null);
     }
 
     public ClientHandler(Socket socket, AuthService authentication) {
+        this(socket, authentication, null);
+    }
+
+    public ClientHandler(Socket socket, AuthService authentication, com.supplygo.service.InventoryService inventory) {
+        this.inventory = inventory;
         this.socket = socket;
         this.authentication = authentication;
     }
@@ -38,7 +44,7 @@ public final class ClientHandler implements Runnable {
                 secure.startHandshake();
                 secure.setSoTimeout(SupplyGoTcpServer.IDLE_TIMEOUT_MS);
             }
-            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket);
+            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory);
             while (!socket.isClosed()) {
                 final String frame;
                 try {

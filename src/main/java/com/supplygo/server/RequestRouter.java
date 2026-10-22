@@ -14,18 +14,20 @@ import com.supplygo.service.UserSession;
 final class RequestRouter {
     private final AuthService authentication;
     private final boolean secure;
+    private final com.supplygo.service.InventoryService inventory;
     private final UserSession session = new UserSession();
 
-    RequestRouter(AuthService authentication, boolean secure) {
+    RequestRouter(AuthService authentication, boolean secure, com.supplygo.service.InventoryService inventory) {
         this.authentication = authentication;
         this.secure = secure;
+        this.inventory = inventory;
     }
 
     Response handle(Request request) {
         String id = request.requestId();
         if (request.type() == com.supplygo.protocol.MessageType.PING) return Response.ok(id, "PONG");
         if (request.type() == com.supplygo.protocol.MessageType.QUIT) { session.logout(); return Response.ok(id, "BYE"); }
-        if (!secure) return Response.error(id, "TLS_REQUIRED", "Use an encrypted TLS connection for account operations");
+        if (!secure) return Response.error(id, "TLS_REQUIRED", "Use an encrypted TLS connection for protected operations");
         if (authentication == null) return Response.error(id, "AUTH_UNAVAILABLE", "Authentication is not configured");
         try {
             return switch (request.type()) {
@@ -43,6 +45,22 @@ final class RequestRouter {
                                 Role.valueOf(data.get("role").getAsString()));
                         yield profile(id, "REGISTERED", created);
                     } finally { Arrays.fill(password, '\0'); }
+                }
+                case LIST_PRODUCTS, LIST_BATCHES, CREATE_PRODUCT, RECEIVE_BATCH, WITHDRAW_STOCK -> {
+                    UserProfile actor = session.requireUser();
+                    if (inventory == null) throw new AuthException("INVENTORY_UNAVAILABLE", "Inventory is not configured");
+                    JsonObject data = request.payload();
+                    switch (request.type()) {
+                        case CREATE_PRODUCT -> inventory.createProduct(actor, data.get("productId").getAsString(), data.get("name").getAsString());
+                        case RECEIVE_BATCH -> inventory.receive(actor, data.get("productId").getAsString(), data.get("quantity").getAsInt());
+                        case WITHDRAW_STOCK -> inventory.withdraw(actor, data.get("productId").getAsString(), data.get("quantity").getAsInt());
+                        default -> { }
+                    }
+                    if (request.type() == com.supplygo.protocol.MessageType.LIST_PRODUCTS || request.type() == com.supplygo.protocol.MessageType.LIST_BATCHES) {
+                        boolean batches = request.type() == com.supplygo.protocol.MessageType.LIST_BATCHES;
+                        yield Response.ok(id, batches ? "BATCHES" : "PRODUCTS", inventory.list(actor, batches, data.get("offset").getAsInt()));
+                    }
+                    yield Response.ok(id, "INVENTORY_UPDATED");
                 }
                 case GET_PROFILE -> profile(id, "PROFILE", session.requireUser());
                 case LOGOUT -> { session.logout(); yield Response.ok(id, "SIGNED_OUT"); }
