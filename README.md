@@ -6,7 +6,7 @@
 
 **A Real-Time Networked Supply Chain Management & Delivery Optimization System**
 
-[![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com/)
+[![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com/)
 ![TCP/IP](https://img.shields.io/badge/Networking-TCP%2FIP-2563eb?style=for-the-badge)
 ![Concurrency](https://img.shields.io/badge/Concurrency-Multithreaded-16a34a?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-In%20Development-f59e0b?style=for-the-badge)
@@ -86,7 +86,7 @@ Rather than a traditional standalone inventory application, SupplyGo is designed
 
 | Area | Technology |
 | :--- | :--- |
-| Programming language | **Java** (JDK 21 recommended) |
+| Programming language | **Java 25** |
 | Networking | TCP/IP, `Socket`, `ServerSocket` |
 | Concurrency | Java Threads, `ExecutorService` |
 | Synchronization | Java concurrency utilities |
