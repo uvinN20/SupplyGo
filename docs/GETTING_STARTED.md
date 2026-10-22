@@ -2,7 +2,8 @@
 
 This milestone connects a Swing desktop frontend to a concurrent Java TCP server.
 You can connect, send PING requests, receive PONG, disconnect, and reconnect.
-Accounts, inventory, orders, persistence, and UDP chat follow in later tasks.
+TLS account registration and sign-in are documented in [AUTHENTICATION.md](AUTHENTICATION.md).
+Inventory, orders, and UDP chat follow in later tasks.
 
 ## Requirements
 

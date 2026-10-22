@@ -1,7 +1,7 @@
 # SupplyGo TCP protocol, version 1
 
-The first implemented operations are PING and QUIT. Authentication, mutations,
-server-initiated events, and UDP chat are not part of this version's feature set.
+PING and QUIT remain supported. TLS connections also support account operations
+described below. Business mutations, events, and UDP chat follow in later tasks.
 
 ## Framing
 
@@ -22,8 +22,8 @@ server-initiated events, and UDP chat are not part of this version's feature set
 Every request has exactly these fields. Types are checked without string/number
 coercion. `version` must be the JSON integer `1`; request IDs match
 `[A-Za-z0-9._:-]{1,64}`. `payload` must be an empty object for both operations.
-Unknown top-level fields are rejected. Duplicate JSON object keys use Gson's
-last-value behavior; send each field exactly once.
+Unknown top-level fields and duplicate JSON object keys at every nesting level
+are rejected.
 
 ```json
 {"version":1,"requestId":"request-001","type":"PING","payload":{}}
@@ -86,7 +86,45 @@ There is no automatic request retry, and the server stores no request-ID history
 
 TCP will carry accounts, inventory, orders, routes, and business events. The
 server must enforce validation, permissions, synchronization, and persistence.
-Before adding mutable operations, define sessions, idempotency/duplicate-request
-handling, and an event envelope. This demonstration uses unencrypted TCP; add TLS
-before sending real credentials. UDP will be a separate messenger and will never
+Before adding business mutations, define idempotency/duplicate-request handling
+and an event envelope. The plain PING/QUIT mode does not support accounts;
+account operations require TLS. UDP will be a separate messenger and will never
 change stock, orders, or financial records.
+
+## TLS account operations
+
+Account messages use the same version 1 envelope and 8192-byte framing. Only
+`LOGIN` and `REGISTER` have nonempty payloads; all other operations use `{}`.
+TLS is required for every operation in this table. The server authenticates its
+certificate; clients verify both trust and hostname. Session identity stays on
+the server for that socket. Requests never carry a session role or session token.
+
+| Type | Payload | Successful `data` | Authorization |
+| --- | --- | --- | --- |
+| `REGISTER` | `username`, `password`, `role` strings | `message: REGISTERED`, `username`, `role` | SUPPLIER/SELLER self-registration only |
+| `LOGIN` | `username`, `password` strings | `message: SIGNED_IN`, `username`, `role` | Valid saved credentials |
+| `GET_PROFILE` | Empty | `message: PROFILE`, `username`, `role` | Signed-in user |
+| `LOGOUT` | Empty | `message: SIGNED_OUT` | Idempotent session removal |
+| `ADMIN_STATS` | Empty | `message: ADMIN_STATS`, integer `userCount` | ADMIN only |
+
+Example LOGIN (send only over TLS):
+
+```json
+{"version":1,"requestId":"auth-001","type":"LOGIN","payload":{"username":"supplier_one","password":"YOUR_OWN_PASSWORD"}}
+```
+
+Additional errors are `TLS_REQUIRED`, `AUTH_UNAVAILABLE`, `INVALID_ACCOUNT`,
+`USERNAME_TAKEN`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `SERVER_BUSY`,
+`STORAGE_ERROR`, `AUTH_REQUIRED`, `SESSION_EXPIRED`, and `FORBIDDEN`. These use
+correlated ERROR replies and keep the connection usable. A failed LOGIN clears
+any previous session. The server never includes credentials or hashes in replies.
+
+A session expires 15 minutes after login; the existing 60-second socket inactivity
+limit can close it earlier. The bounded login throttle is shared by connections,
+with a one-minute cooldown after five failures for a username. There are at most
+four simultaneous password-hashing operations and 32 connection handlers.
+Registration is unique by normalized username and does not automatically log in.
+There is no automatic retry; a registration whose reply was lost may already have
+succeeded. Attempt normal sign-in rather than creating a duplicate.
+
+See [AUTHENTICATION.md](AUTHENTICATION.md) for credentials, stores and TLS setup.

@@ -12,6 +12,9 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
+import com.supplygo.service.AuthService;
 
 /** Blocking accept loop with at most 32 active clients and no waiting socket queue. */
 public final class SupplyGoTcpServer implements AutoCloseable {
@@ -24,13 +27,20 @@ public final class SupplyGoTcpServer implements AutoCloseable {
     private final Object lifecycle = new Object();
     private final AtomicBoolean started = new AtomicBoolean();
     private volatile boolean closed;
+    private final AuthService authentication;
 
     /** Port zero requests an operating-system-assigned port, useful for local tests. */
     public SupplyGoTcpServer(String bindAddress, int port) throws IOException {
+        this(bindAddress, port, null, null);
+    }
+
+    public SupplyGoTcpServer(String bindAddress, int port, SSLContext tls, AuthService authentication) throws IOException {
         if (bindAddress == null || bindAddress.isBlank()) {
             throw new IllegalArgumentException("Server bind address must not be blank");
         }
-        listener = new ServerSocket();
+        this.authentication = authentication;
+        listener = tls == null ? new ServerSocket() : tls.getServerSocketFactory().createServerSocket();
+        if (listener instanceof SSLServerSocket secure) secure.setEnabledProtocols(new String[]{"TLSv1.3", "TLSv1.2"});
         try {
             listener.bind(new InetSocketAddress(bindAddress.strip(), port));
         } catch (IOException | RuntimeException exception) {
@@ -59,7 +69,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
                         clients.add(socket);
                         workers.execute(() -> {
                             try {
-                                new ClientHandler(socket).run();
+                                new ClientHandler(socket, this.authentication).run();
                             } finally {
                                 synchronized (lifecycle) {
                                     clients.remove(socket);
