@@ -1,0 +1,17 @@
+/target/
+/out/
+*.class
+*.log
+/.idea/
+/.vscode/
+*.iml
+.classpath
+.project
+.settings/
+.env
+.env.*
+!.env.example
+/data/*
+!/data/.gitkeep
+.DS_Store
+Thumbs.db
