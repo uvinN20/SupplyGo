@@ -1,18 +1,21 @@
 # SupplyGo project structure
 
 The project uses one Maven build and separate server/client Java entry points.
-The current milestone includes working launchers and configuration, not the full
-business application. Package documentation tracks planned areas without adding
-empty business classes that pretend to implement features.
+The current milestone implements TCP connectivity and configuration, while the
+business application follows in later tasks. Package documentation tracks the
+remaining planned areas without adding empty business classes.
 
 | Location | Responsibility | Current status |
 | --- | --- | --- |
 | `Main.java` | Optional `server` / `client` dispatcher | Implemented |
-| `server/ServerMain.java` | Backend configuration check and launcher | Implemented; no listener yet |
+| `server/ServerMain.java` | TCP backend launcher | Implemented |
 | `client/ClientMain.java` | Swing application entry point | Implemented |
-| `ui/ClientWindow.java` | Offline desktop shell | Implemented |
+| `ui/ClientWindow.java` | Connection controls and activity log | Implemented |
 | `config/NetworkConfig.java` | Immutable endpoint settings and validation | Implemented |
-| `protocol/` | Shared requests, responses, errors, notifications | Package reserved |
+| `client/SupplyGoTcpClient.java` | TCP socket, correlated requests and timeouts | Implemented |
+| `server/SupplyGoTcpServer.java` | Bounded concurrent accept loop and shutdown | Implemented |
+| `server/ClientHandler.java` | Per-connection request processing | Implemented |
+| `protocol/` | Message types, requests, responses, JSON and framing | PING/QUIT implemented |
 | `model/` | Domain records and user roles | Package reserved |
 | `service/` | Server-side authorization and business rules | Package reserved |
 | `algorithm/` | Priority rankings, FIFO, Dijkstra routing | Package reserved |
@@ -22,7 +25,8 @@ empty business classes that pretend to implement features.
 | `src/test/java/com/supplygo/config/` | Configuration regression tests | Implemented |
 | `src/test/java/com/supplygo/algorithm/` | Algorithm tests | Directory reserved |
 | `src/test/java/com/supplygo/service/` | Business-rule and concurrency tests | Directory reserved |
-| `src/test/java/com/supplygo/network/` | TCP/UDP integration tests | Directory reserved |
+| `src/test/java/com/supplygo/network/` | Real TCP socket integration tests | Implemented |
+| `src/test/java/com/supplygo/protocol/` | JSON and framing validation | Implemented |
 | `data/` | Server runtime files | Placeholder only; generated content ignored |
 
 ## Dependency boundaries
@@ -41,7 +45,7 @@ requires them. Application inventory synchronization belongs in the services.
 
 ## Next milestone
 
-Implement a small TCP vertical slice: start the listener, connect a client, send
-a request, receive a response, and handle disconnects. Add actual protocol types
-and connection code there. Authentication, storage, dashboards, and UDP chat
-follow in their own reviewed tasks.
+Build authentication and role-based authorization as a new vertical slice, then
+server-owned persistence and business operations. Extend the existing protocol
+with explicit schemas and duplicate-request rules before adding order mutations.
+UDP messenger and optional OS simulations remain separate tasks.
