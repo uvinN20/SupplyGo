@@ -1,4 +1,4 @@
 /**
- * Shared TCP requests, responses, errors, and notifications. The wire protocol is implemented in the TCP milestone.
+ * Version 1 TCP messages, strict JSON validation and bounded UTF-8 framing.
  */
 package com.supplygo.protocol;
