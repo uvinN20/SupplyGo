@@ -48,8 +48,10 @@ public final class ClientWindow extends JFrame {
     };
     private final JTable inventoryTable = new JTable(inventoryRows);
     private int nextOffset = -1;
+    private final OrderPanel orders = new OrderPanel(this);
     private SupplyGoTcpClient client;
     private UserProfile profile;
+    private String endpoint = "";
     private boolean connected;
     private boolean busy;
 
@@ -99,6 +101,7 @@ public final class ClientWindow extends JFrame {
         inventoryTable.setPreferredScrollableViewportSize(new Dimension(700, 150));
         stock.add(new JScrollPane(inventoryTable), BorderLayout.CENTER);
         stock.add(inventoryStatus, BorderLayout.SOUTH); tabs.addTab("Inventory", stock);
+        tabs.addTab("Orders", orders);
         body.add(tabs, BorderLayout.CENTER); content.add(body, BorderLayout.CENTER);
         content.add(new JLabel("Sign-in requires a TLS server and its trusted certificate. See docs/AUTHENTICATION.md."), BorderLayout.SOUTH);
         setContentPane(content);
@@ -157,13 +160,13 @@ public final class ClientWindow extends JFrame {
     }
     private void showInventory(com.google.gson.JsonObject page, boolean batches, int offset) {
         inventoryRows.setColumnIdentifiers(batches ? new String[]{"Batch ID", "Product ID", "Units", "Received (UTC)", "Received by"}
-                : new String[]{"Product ID", "Name", "Units available"});
-        int[] widths = batches ? new int[]{70, 110, 70, 310, 140} : new int[]{140, 400, 160};
+                : new String[]{"Product ID", "Name", "Available", "On hand", "Reserved"});
+        int[] widths = batches ? new int[]{70, 110, 70, 310, 140} : new int[]{100, 300, 100, 100, 100};
         for (int i = 0; i < widths.length; i++) inventoryTable.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         inventoryRows.setRowCount(0);
         for (var element : page.getAsJsonArray(batches ? "batches" : "products")) {
             var row = element.getAsJsonObject();
-            String[] keys = batches ? new String[]{"id", "productId", "quantity", "receivedAt", "receivedBy"} : new String[]{"id", "name", "quantity"};
+            String[] keys = batches ? new String[]{"id", "productId", "quantity", "receivedAt", "receivedBy"} : new String[]{"id", "name", "quantity", "onHand", "reserved"};
             Object[] values = new Object[keys.length];
             for (int i = 0; i < keys.length; i++) values[i] = row.get(keys[i]).getAsString();
             inventoryRows.addRow(values);
@@ -194,6 +197,7 @@ public final class ClientWindow extends JFrame {
     private void connect() {
         try {
             port.commitEdit();
+            endpoint = host.getText().strip().toLowerCase(java.util.Locale.ROOT) + ":" + port.getValue();
             client = new SupplyGoTcpClient(host.getText(), ((Number) port.getValue()).intValue(), tls.isSelected() ? TlsSupport.defaultContext() : null);
         } catch (Exception exception) { append("Check server settings and TLS truststore: " + exception.getMessage()); return; }
         SupplyGoTcpClient attempt = client;
@@ -215,7 +219,11 @@ public final class ClientWindow extends JFrame {
         });
     }
 
-    private <T> void perform(String progress, Callable<T> operation, Consumer<T> success) {
+    String currentEndpoint() { return endpoint; }
+    SupplyGoTcpClient currentClient() { return client; }
+    void inventoryChanged() { clearInventory(); }
+
+    <T> void perform(String progress, Callable<T> operation, Consumer<T> success) {
         busy = true; status.setText(progress); updateControls();
         new SwingWorker<T, Void>() {
             @Override protected T doInBackground() throws Exception { return operation.call(); }
@@ -228,6 +236,7 @@ public final class ClientWindow extends JFrame {
                         if (rejected.code().equals("AUTH_REQUIRED") || rejected.code().equals("SESSION_EXPIRED")) profile = null;
                         append(rejected.getMessage());
                         inventoryStatus.setText(rejected.getMessage());
+                        orders.showError(rejected.getMessage());
                     } else failed(cause.getMessage() == null ? "Connection failed" : cause.getMessage());
                 } finally { busy = false; status.setText(connected ? "Connected" : "Offline"); updateControls(); }
             }
@@ -237,6 +246,7 @@ public final class ClientWindow extends JFrame {
         connected = false; profile = null;
         if (client != null) client.close();
         append("Connection error: " + message);
+        orders.showError("Connection lost. Reconnect and use Retry submission for an unconfirmed order, or refresh orders.");
     }
     private void updateControls() {
         host.setEnabled(!busy && !connected); port.setEnabled(!busy && !connected); tls.setEnabled(!busy && !connected);
@@ -252,6 +262,7 @@ public final class ClientWindow extends JFrame {
         boolean writer = profile != null && (profile.role() == Role.ADMIN || profile.role() == Role.PRODUCTION_MANAGER);
         createProduct.setEnabled(inventoryEnabled && writer); receiveBatch.setEnabled(inventoryEnabled && writer); withdrawStock.setEnabled(inventoryEnabled && writer);
         if (profile == null) clearInventory();
+        orders.setContext(profile, busy);
         identity.setText(profile == null ? "Not signed in" : profile.username() + " • " + profile.role());
     }
     private void append(String message) {
