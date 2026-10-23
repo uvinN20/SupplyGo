@@ -2,8 +2,8 @@
 
 This feature adds supplier/seller registration, sign-in, profiles, sign-out and
 server-side roles. Accounts persist on the server. For inventory operations, see
-[INVENTORY.md](INVENTORY.md). Order management, password reset and account
-administration screens follow in later tasks.
+[INVENTORY.md](INVENTORY.md). Order management is described in [ORDERS.md](ORDERS.md).
+Password reset and account administration screens follow in later tasks.
 
 ## Build and choose the branch
 

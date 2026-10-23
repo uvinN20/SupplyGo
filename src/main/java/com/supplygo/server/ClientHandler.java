@@ -5,20 +5,25 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+
 import javax.net.ssl.SSLSocket;
-import com.supplygo.service.AuthService;
+
 import com.supplygo.protocol.FrameIO;
 import com.supplygo.protocol.MessageType;
 import com.supplygo.protocol.ProtocolCodec;
 import com.supplygo.protocol.ProtocolException;
 import com.supplygo.protocol.Request;
 import com.supplygo.protocol.Response;
+import com.supplygo.service.AuthService;
+import com.supplygo.service.InventoryService;
+import com.supplygo.service.OrderService;
 
 /** One handler owns each accepted connection and processes its requests in order. */
 public final class ClientHandler implements Runnable {
     private final Socket socket;
     private final AuthService authentication;
-    private final com.supplygo.service.InventoryService inventory;
+    private final InventoryService inventory;
+    private final OrderService orders;
 
     public ClientHandler(Socket socket) {
         this(socket, null);
@@ -28,7 +33,13 @@ public final class ClientHandler implements Runnable {
         this(socket, authentication, null);
     }
 
-    public ClientHandler(Socket socket, AuthService authentication, com.supplygo.service.InventoryService inventory) {
+    public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory) {
+        this(socket, authentication, inventory, null);
+    }
+
+    public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory,
+            OrderService orders) {
+        this.orders = orders;
         this.inventory = inventory;
         this.socket = socket;
         this.authentication = authentication;
@@ -44,7 +55,7 @@ public final class ClientHandler implements Runnable {
                 secure.startHandshake();
                 secure.setSoTimeout(SupplyGoTcpServer.IDLE_TIMEOUT_MS);
             }
-            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory);
+            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, orders);
             while (!socket.isClosed()) {
                 final String frame;
                 try {

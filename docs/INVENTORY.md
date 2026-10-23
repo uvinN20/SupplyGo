@@ -2,7 +2,8 @@
 
 Requires Java 25, Maven 3.9+, and the TLS/account setup in
 [AUTHENTICATION.md](AUTHENTICATION.md). Use `feature/inventory-management` while
-reviewing this feature, then `main` after merge. Run `mvn clean verify` and use
+reviewing the inventory-only feature, then `main` after merge. Order-enabled
+builds are described in [ORDERS.md](ORDERS.md). Run `mvn clean verify` and use
 the same server/client launch commands as authentication.
 
 ## Desktop workflow
@@ -17,7 +18,8 @@ the same server/client launch commands as authentication.
 4. **Withdraw FIFO** for `APPLE` with 8 units. The first batch is consumed and
    the second retains 7 units. A request exceeding available stock changes nothing.
 5. Click **Refresh** to see current totals or choose **Fruit batches** to see the
-   remaining batches, their server receipt times (UTC) and receiving account.
+   remaining physical batches, their server receipt times (UTC) and receiving account.
+   Products show available, on-hand and reserved quantities when orders are enabled.
    **Next page** shows the next ten rows; Refresh returns to the first page.
 6. Sign in as a supplier or seller: inventory is readable, but mutation controls
    are disabled and the server rejects attempted stock changes from these roles.
@@ -35,9 +37,11 @@ username, role, receipt timestamp or batch ID.
   retain the original ID and receipt metadata. Depleted batches are removed.
 - Products are append-only in this feature. Limits: 1,000 products and 10,000
   currently nonempty batches; total available quantities use a Java `long`.
+- Active orders reserve units. Direct withdrawals cannot consume the units needed
+  for those reservations. Available stock is physical stock minus active reservations.
 - The server saves `inventory.json` beside `users.json` under `data/`, or the
   directory selected by `-Dsupplygo.data.dir=...`. Generated data is not committed.
-- One inventory-service monitor protects validation, FIFO calculation, file
+- One shared repository monitor protects inventory and order validation, FIFO calculation, file
   replacement and in-memory publication. Concurrent clients cannot oversell.
   The tradeoff is that disk writes serialize stock operations.
 - A separate file lock rejects another server using the same inventory store.
@@ -50,17 +54,19 @@ username, role, receipt timestamp or batch ID.
 
 ## Scope and operational limits
 
-This is current-stock management, not an order or accounting ledger. Expiry dates,
-weights, prices, supplier ownership, inventory adjustments, historical movements,
-order reservations and automatic replenishment are future features. FIFO here
-has no expiry policy. Withdrawals are trusted manager actions, not seller orders.
+Order reservations and fulfilment are described in [ORDERS.md](ORDERS.md).
+Expiry dates, weights, prices, supplier ownership, inventory adjustments, historical
+movements and automatic replenishment are future features. FIFO here has no expiry
+policy. Direct withdrawals are trusted manager actions; sellers submit orders
+through the Orders tab.
 
 Each page is current when read, not a snapshot shared across requests. Concurrent
 changes can move batch rows between pages; Refresh starts a fresh traversal.
 There is no automatic polling. Existing sessions expire after 15 minutes and
 inactive connections after 60 seconds; reconnect/sign in when necessary.
 
-Requests are not automatically retried. If a connection fails after a mutation
+Direct inventory requests are not automatically retried. Order submissions have
+separate duplicate protection described in ORDERS.md. If a connection fails after a mutation
 was sent, it may already have been saved even without a reply. Reconnect and
 inspect stock before repeating it. Exactly-once retries and a durable audit log
 are not part of this increment. Atomic replacement is not a guarantee against

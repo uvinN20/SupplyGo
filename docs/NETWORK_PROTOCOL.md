@@ -142,7 +142,9 @@ See [AUTHENTICATION.md](AUTHENTICATION.md) for credentials, stores and TLS setup
 Offsets and quantities are JSON integers, not strings or decimals. Offsets range
 from 0 to 10000; quantities from 1 to 1000000 whole fruit units. Each page contains
 at most ten rows; `nextOffset` is -1 at the end. Product rows contain `id`, `name`,
-`quantity` (total units). Batch rows contain `id` (integer), `productId`, `quantity`,
+`quantity` (available units), `onHand` (physical units), and `reserved` (active order
+units). `quantity = onHand - reserved`. Upgrade desktop clients and server together;
+older clients reject these extended product rows. Batch rows contain `id` (integer), `productId`, `quantity`,
 `receivedAt` (ISO-8601 UTC instant), `receivedBy` (server session username).
 Rows and payloads reject unknown fields. Existing 8192-byte frame limits apply.
 
@@ -153,3 +155,36 @@ may list it. Additional error codes: `INVENTORY_UNAVAILABLE`, `INVALID_INVENTORY
 errors preserve the connection. See [INVENTORY.md](INVENTORY.md) for persistence,
 FIFO semantics, paging consistency and the warning about retrying an
 unacknowledged mutation.
+
+## Order requests (TLS and authenticated session required)
+
+| Type | Exact payload | Successful data |
+| --- | --- | --- |
+| `CREATE_ORDER` | `{"clientOrderId":"74c6d044-9098-4b3c-b10f-58425825da04","productId":"APPLE","quantity":8}` | `message: "ORDER"`, `order` |
+| `LIST_ORDERS` | `{"offset":0}` | `message: "ORDERS"`, `orders`, `nextOffset` |
+| `GET_ORDER` | `{"orderId":1}` | `message: "ORDER"`, `order` |
+| `APPROVE_ORDER` | `{"orderId":1}` | `message: "ORDER"`, `order` |
+| `FULFIL_ORDER` | `{"orderId":1}` | `message: "ORDER"`, `order` |
+| `CANCEL_ORDER` | `{"orderId":1}` | `message: "ORDER"`, `order` |
+
+`orderId` is a positive JSON integer within Java's signed `long` range. Quantities
+are integer whole fruit units from 1 to 1000000. `clientOrderId` is a canonical
+lowercase UUID string; it identifies a submission within the signed-in seller's
+account and survives server restarts. Retrying the same submission and details
+returns the existing order. Different details with that ID are rejected.
+
+An order has exactly: `id`, `clientOrderId`, `sellerUsername`, `productId`,
+`quantity`, `status`, `createdAt`, `updatedAt`, `updatedBy`. Status is `PENDING`,
+`APPROVED`, `FULFILLED` or `CANCELLED`; timestamps are ISO-8601 UTC strings.
+Creation and mutation responses use the same record schema. List replies contain
+at most ten records; `nextOffset` is -1 at the end. Seller filtering happens
+before pagination. Existing frame size, unique-key and request correlation rules
+continue to apply. Clients may not send seller identity or target status fields;
+server operations determine those values.
+
+Additional errors: `ORDERS_UNAVAILABLE`, `INVALID_ORDER`, `ORDER_NOT_FOUND`,
+`INVALID_ORDER_STATE`, `ORDER_LIMIT`, `SUBMISSION_CONFLICT`. Existing
+`INSUFFICIENT_STOCK`, `PRODUCT_NOT_FOUND`, `STORAGE_ERROR`, TLS, authentication and
+permission errors apply. All are correlated application errors and preserve the
+connection. Roles, allowed transitions, atomic reservations and recovery rules
+are documented in [ORDERS.md](ORDERS.md).
