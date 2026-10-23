@@ -60,3 +60,7 @@ UDP messenger and optional OS simulations remain separate tasks. See
 - `service/InventoryService.java`: authorization, synchronized changes, FIFO and paging.
 - `ui/ClientWindow.java`: Inventory tab for products, batches and manager actions.
 - `docs/INVENTORY.md`: usage, stock units, concurrency and persistence limits.
+
+## Business profile module
+
+BusinessProfile is the validated data model; BusinessProfileRepository owns atomic JSON persistence and process locking; BusinessProfileService enforces ownership and directory permissions. BusinessProfileData handles wire records, and BusinessProfilePanel provides the Swing editor and manager directory. See [BUSINESS_PROFILES.md](BUSINESS_PROFILES.md).

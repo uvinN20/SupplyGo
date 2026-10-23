@@ -150,3 +150,5 @@ future clients must not access repositories directly. See
 After signing in over TLS, use the Inventory tab to browse stock. Administrators
 and production managers can create products, receive batches and withdraw stock
 in FIFO order. See [INVENTORY.md](INVENTORY.md) for a walkthrough.
+
+For supplier/seller profiles and manager directories, see [Business profiles](BUSINESS_PROFILES.md).

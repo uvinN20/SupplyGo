@@ -47,6 +47,7 @@ public final class ClientWindow extends JFrame {
         @Override public boolean isCellEditable(int row, int column) { return false; }
     };
     private final JTable inventoryTable = new JTable(inventoryRows);
+    private final BusinessProfilePanel businessProfiles = new BusinessProfilePanel(this);
     private int nextOffset = -1;
     private SupplyGoTcpClient client;
     private UserProfile profile;
@@ -88,6 +89,7 @@ public final class ClientWindow extends JFrame {
         JScrollPane scroll = new JScrollPane(log); scroll.setBorder(BorderFactory.createTitledBorder("Activity"));
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Activity", scroll);
+        tabs.addTab("Business profiles", businessProfiles);
         JPanel stock = new JPanel(new BorderLayout(0, 6));
         stock.add(row(inventoryView, refreshInventory, nextInventory, createProduct, receiveBatch, withdrawStock), BorderLayout.NORTH);
         inventoryStatus.setName("inventoryStatus");
@@ -215,7 +217,9 @@ public final class ClientWindow extends JFrame {
         });
     }
 
-    private <T> void perform(String progress, Callable<T> operation, Consumer<T> success) {
+    SupplyGoTcpClient currentClient() { return client; }
+
+    <T> void perform(String progress, Callable<T> operation, Consumer<T> success) {
         busy = true; status.setText(progress); updateControls();
         new SwingWorker<T, Void>() {
             @Override protected T doInBackground() throws Exception { return operation.call(); }
@@ -228,6 +232,7 @@ public final class ClientWindow extends JFrame {
                         if (rejected.code().equals("AUTH_REQUIRED") || rejected.code().equals("SESSION_EXPIRED")) profile = null;
                         append(rejected.getMessage());
                         inventoryStatus.setText(rejected.getMessage());
+                        businessProfiles.showError(rejected.getMessage());
                     } else failed(cause.getMessage() == null ? "Connection failed" : cause.getMessage());
                 } finally { busy = false; status.setText(connected ? "Connected" : "Offline"); updateControls(); }
             }
@@ -239,6 +244,7 @@ public final class ClientWindow extends JFrame {
         append("Connection error: " + message);
     }
     private void updateControls() {
+        businessProfiles.update(profile, busy);
         host.setEnabled(!busy && !connected); port.setEnabled(!busy && !connected); tls.setEnabled(!busy && !connected);
         connect.setEnabled(!busy && !connected); ping.setEnabled(!busy && connected); disconnect.setEnabled(!busy && connected);
         boolean anonymous = !busy && connected && client != null && client.isSecure() && profile == null;

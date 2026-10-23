@@ -153,3 +153,7 @@ may list it. Additional error codes: `INVENTORY_UNAVAILABLE`, `INVALID_INVENTORY
 errors preserve the connection. See [INVENTORY.md](INVENTORY.md) for persistence,
 FIFO semantics, paging consistency and the warning about retrying an
 unacknowledged mutation.
+
+## Business profiles
+
+Authenticated TLS clients support GET_BUSINESS_PROFILE, UPDATE_BUSINESS_PROFILE, LIST_SUPPLIERS and LIST_SELLERS. See [BUSINESS_PROFILES.md](BUSINESS_PROFILES.md) for exact payloads, responses, validation, pagination and permissions.
