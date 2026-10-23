@@ -46,12 +46,20 @@ public final class ProtocolCodec {
         catch (IllegalArgumentException exception) { throw new ProtocolException("UNKNOWN_TYPE", id, "Unsupported message type"); }
         JsonObject payload = json.getAsJsonObject("payload");
         Set<String> keys = switch (type) {
+            case LIST_PRODUCTS, LIST_BATCHES -> Set.of("offset");
+            case CREATE_PRODUCT -> Set.of("productId", "name");
+            case RECEIVE_BATCH, WITHDRAW_STOCK -> Set.of("productId", "quantity");
             case LOGIN -> Set.of("username", "password");
             case REGISTER -> Set.of("username", "password", "role");
             default -> Set.of();
         };
         if (!payload.keySet().equals(keys)) throw invalid(id, "Invalid payload fields for " + type);
         for (String key : keys) {
+            if (key.equals("offset") || key.equals("quantity")) {
+                if (!(payload.get(key) instanceof JsonPrimitive number) || !number.isNumber()
+                        || !number.getAsString().matches("[0-9]{1,7}")) throw invalid(id, key + " must be a nonnegative integer");
+                continue;
+            }
             String value = string(payload, key, id);
             if (value.length() > 128) throw invalid(id, "Payload string exceeds 128 characters");
         }
@@ -73,6 +81,10 @@ public final class ProtocolCodec {
             String message = string(data, "message", id);
             data.remove("message");
             if (data.isEmpty()) return Response.ok(id, message);
+            if (message.equals("PRODUCTS") || message.equals("BATCHES")) {
+                validateInventoryPage(data, message.equals("BATCHES"), id);
+                return Response.ok(id, message, data);
+            }
             if (data.keySet().equals(Set.of("username", "role"))) {
                 string(data, "username", id);
                 try { Role.valueOf(string(data, "role", id)); }
@@ -91,6 +103,39 @@ public final class ProtocolCodec {
             }
         }
         throw invalid(id, "Invalid response envelope");
+    }
+
+    private static void validateInventoryPage(JsonObject data, boolean batches, String id) throws ProtocolException {
+        String key = batches ? "batches" : "products";
+        if (!data.keySet().equals(Set.of(key, "nextOffset")) || !data.get(key).isJsonArray()
+                || data.getAsJsonArray(key).size() > 10) throw invalid(id, "Invalid inventory page");
+        integer(data, "nextOffset", -1, 10000, id);
+        for (JsonElement element : data.getAsJsonArray(key)) {
+            if (!element.isJsonObject()) throw invalid(id, "Invalid inventory row");
+            JsonObject row = element.getAsJsonObject();
+            try {
+                if (batches) {
+                    if (!row.keySet().equals(Set.of("id", "productId", "quantity", "receivedAt", "receivedBy"))) throw invalid(id, "Invalid batch fields");
+                    String productId = string(row, "productId", id);
+                    new com.supplygo.model.Product(productId, "validation");
+                    new com.supplygo.model.FruitBatch(integer(row, "id", 1, Long.MAX_VALUE, id), productId,
+                            (int) integer(row, "quantity", 1, 1000000, id), string(row, "receivedAt", id), string(row, "receivedBy", id));
+                } else {
+                    if (!row.keySet().equals(Set.of("id", "name", "quantity"))) throw invalid(id, "Invalid product fields");
+                    new com.supplygo.model.Product(string(row, "id", id), string(row, "name", id));
+                    integer(row, "quantity", 0, 10_000_000_000L, id);
+                }
+            } catch (RuntimeException exception) { throw invalid(id, "Invalid inventory row values"); }
+        }
+    }
+    private static long integer(JsonObject object, String key, long minimum, long maximum, String id) throws ProtocolException {
+        if (!(object.get(key) instanceof JsonPrimitive value) || !value.isNumber() || !value.getAsString().matches("-?[0-9]{1,19}"))
+            throw invalid(id, "Invalid integer " + key);
+        try {
+            long number = Long.parseLong(value.getAsString());
+            if (number < minimum || number > maximum) throw invalid(id, "Integer out of range");
+            return number;
+        } catch (NumberFormatException exception) { throw invalid(id, "Integer out of range"); }
     }
 
     private static JsonObject envelope(String id) {

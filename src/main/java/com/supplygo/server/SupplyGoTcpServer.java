@@ -28,6 +28,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
     private final AtomicBoolean started = new AtomicBoolean();
     private volatile boolean closed;
     private final AuthService authentication;
+    private final com.supplygo.service.InventoryService inventory;
 
     /** Port zero requests an operating-system-assigned port, useful for local tests. */
     public SupplyGoTcpServer(String bindAddress, int port) throws IOException {
@@ -35,10 +36,16 @@ public final class SupplyGoTcpServer implements AutoCloseable {
     }
 
     public SupplyGoTcpServer(String bindAddress, int port, SSLContext tls, AuthService authentication) throws IOException {
+        this(bindAddress, port, tls, authentication, null);
+    }
+
+    public SupplyGoTcpServer(String bindAddress, int port, SSLContext tls, AuthService authentication,
+            com.supplygo.service.InventoryService inventory) throws IOException {
         if (bindAddress == null || bindAddress.isBlank()) {
             throw new IllegalArgumentException("Server bind address must not be blank");
         }
         this.authentication = authentication;
+        this.inventory = inventory;
         listener = tls == null ? new ServerSocket() : tls.getServerSocketFactory().createServerSocket();
         if (listener instanceof SSLServerSocket secure) secure.setEnabledProtocols(new String[]{"TLSv1.3", "TLSv1.2"});
         try {
@@ -69,7 +76,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
                         clients.add(socket);
                         workers.execute(() -> {
                             try {
-                                new ClientHandler(socket, this.authentication).run();
+                                new ClientHandler(socket, this.authentication, this.inventory).run();
                             } finally {
                                 synchronized (lifecycle) {
                                     clients.remove(socket);

@@ -27,6 +27,7 @@ class AuthIntegrationTest {
     static final String PASSWORD = "a strong test password";
     AccountRepository repository;
     AuthService authentication;
+    com.supplygo.storage.InventoryRepository inventory;
     SupplyGoTcpServer server;
     Thread accept;
     AtomicReference<Throwable> failure = new AtomicReference<>();
@@ -49,14 +50,35 @@ class AuthIntegrationTest {
     }
     @BeforeEach void start() throws Exception {
         repository = new AccountRepository(data); authentication = new AuthService(repository);
-        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication);
+        inventory = new com.supplygo.storage.InventoryRepository(data);
+        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication, new com.supplygo.service.InventoryService(inventory));
         accept = Thread.ofPlatform().start(() -> { try { server.serve(); } catch (Throwable e) { failure.set(e); } });
     }
     @AfterEach void stop() throws Exception {
         server.close(); accept.join(3000); assertFalse(accept.isAlive());
-        assertNull(failure.get()); repository.close();
+        assertNull(failure.get()); repository.close(); inventory.close();
     }
     SupplyGoTcpClient client() { return new SupplyGoTcpClient("localhost", server.port(), clientContext); }
+
+    @Test void inventoryOverTlsEnforcesRolesAndPersistsFifoUpdates() throws Exception {
+        authentication.provision("manager", PASSWORD.toCharArray(), Role.PRODUCTION_MANAGER);
+        try (var manager = client(); var seller = client()) {
+            manager.connect(); seller.connect();
+            assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, () -> manager.inventoryPage(false, 0)).code());
+            manager.login("manager", PASSWORD.toCharArray());
+            manager.createProduct("APPLE", "Apple"); manager.changeStock(true, "APPLE", 5); manager.changeStock(true, "APPLE", 10);
+            seller.register("seller", PASSWORD.toCharArray(), Role.SELLER); seller.login("seller", PASSWORD.toCharArray());
+            assertEquals(15, seller.inventoryPage(false, 0).getAsJsonArray("products").get(0).getAsJsonObject().get("quantity").getAsInt());
+            assertEquals("FORBIDDEN", assertThrows(ServerRejectedException.class, () -> seller.changeStock(false, "APPLE", 1)).code());
+            manager.changeStock(false, "APPLE", 8);
+            var batches = manager.inventoryPage(true, 0).getAsJsonArray("batches");
+            assertEquals(1, batches.size()); assertEquals(2, batches.get(0).getAsJsonObject().get("id").getAsInt());
+            assertEquals(7, batches.get(0).getAsJsonObject().get("quantity").getAsInt());
+            assertEquals("INSUFFICIENT_STOCK", assertThrows(ServerRejectedException.class, () -> manager.changeStock(false, "APPLE", 8)).code());
+            assertEquals("PONG", manager.ping()); manager.logout();
+            assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, () -> manager.changeStock(true, "APPLE", 1)).code());
+        }
+    }
 
     @Test void registerLoginProfileLogoutAndNewConnection() throws Exception {
         try (var client = client()) {

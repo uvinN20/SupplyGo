@@ -146,3 +146,7 @@ Use Java throughout. Work on task branches, review pull requests, and use commit
 such as `feat(network): add TCP request handling`. The server owns shared state;
 future clients must not access repositories directly. See
 [NETWORK_PROTOCOL.md](NETWORK_PROTOCOL.md) and [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md).
+
+After signing in over TLS, use the Inventory tab to browse stock. Administrators
+and production managers can create products, receive batches and withdraw stock
+in FIFO order. See [INVENTORY.md](INVENTORY.md) for a walkthrough.

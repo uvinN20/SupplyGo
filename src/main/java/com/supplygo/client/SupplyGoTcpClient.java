@@ -74,6 +74,21 @@ public final class SupplyGoTcpClient implements AutoCloseable {
         return reply.attributes().get("userCount").getAsInt();
     }
 
+    public synchronized JsonObject inventoryPage(boolean batches, int offset) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("offset", offset);
+        Response reply = exchange(Request.create(batches ? MessageType.LIST_BATCHES : MessageType.LIST_PRODUCTS, payload));
+        if (!reply.message().equals(batches ? "BATCHES" : "PRODUCTS") || !reply.attributes().has("nextOffset")) throw badReply();
+        return reply.attributes();
+    }
+    public synchronized String createProduct(String id, String name) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("productId", id); payload.addProperty("name", name);
+        return message(Request.create(MessageType.CREATE_PRODUCT, payload), "INVENTORY_UPDATED");
+    }
+    public synchronized String changeStock(boolean receive, String productId, int quantity) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("productId", productId); payload.addProperty("quantity", quantity);
+        return message(Request.create(receive ? MessageType.RECEIVE_BATCH : MessageType.WITHDRAW_STOCK, payload), "INVENTORY_UPDATED");
+    }
+
     private UserProfile account(MessageType type, String username, char[] password, Role role, String expected) throws IOException {
         if (!isSecure()) throw new IOException("Account operations require TLS; no credentials were sent");
         JsonObject payload = new JsonObject();
