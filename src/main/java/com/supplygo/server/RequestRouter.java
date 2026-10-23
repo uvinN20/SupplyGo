@@ -1,6 +1,9 @@
 package com.supplygo.server;
 
 import java.util.Arrays;
+import com.google.gson.JsonArray;
+import com.supplygo.protocol.MessageType;
+import com.supplygo.service.InventoryService;
 import com.google.gson.JsonObject;
 import com.supplygo.model.Role;
 import com.supplygo.model.UserProfile;
@@ -15,12 +18,18 @@ final class RequestRouter {
     private final AuthService authentication;
     private final boolean secure;
     private final com.supplygo.service.InventoryService inventory;
+    private com.supplygo.service.BusinessProfileService businessProfiles;
     private final UserSession session = new UserSession();
 
     RequestRouter(AuthService authentication, boolean secure, com.supplygo.service.InventoryService inventory) {
         this.authentication = authentication;
         this.secure = secure;
         this.inventory = inventory;
+    }
+
+    RequestRouter(AuthService authentication, boolean secure, InventoryService inventory,
+            com.supplygo.service.BusinessProfileService profiles) {
+        this(authentication, secure, inventory); this.businessProfiles = profiles;
     }
 
     Response handle(Request request) {
@@ -61,6 +70,23 @@ final class RequestRouter {
                         yield Response.ok(id, batches ? "BATCHES" : "PRODUCTS", inventory.list(actor, batches, data.get("offset").getAsInt()));
                     }
                     yield Response.ok(id, "INVENTORY_UPDATED");
+                }
+                case GET_BUSINESS_PROFILE, UPDATE_BUSINESS_PROFILE, LIST_SUPPLIERS, LIST_SELLERS -> {
+                    UserProfile actor = session.requireUser();
+                    if (businessProfiles == null) throw new AuthException("PROFILES_UNAVAILABLE", "Business profiles are not configured");
+                    JsonObject data = request.payload(), attributes = new JsonObject();
+                    if (request.type() == MessageType.LIST_SUPPLIERS || request.type() == MessageType.LIST_SELLERS) {
+                        var page = businessProfiles.list(actor, request.type() == MessageType.LIST_SUPPLIERS ? Role.SUPPLIER : Role.SELLER,
+                                data.get("offset").getAsInt());
+                        JsonArray rows = new JsonArray(); page.profiles().forEach(p -> rows.add(com.supplygo.protocol.BusinessProfileData.encode(p)));
+                        attributes.add("profiles", rows); attributes.addProperty("nextOffset", page.nextOffset());
+                        yield Response.ok(id, "BUSINESS_PROFILES", attributes);
+                    }
+                    var result = request.type() == MessageType.GET_BUSINESS_PROFILE ? businessProfiles.get(actor)
+                            : businessProfiles.update(actor, data.get("fullName").getAsString(), data.get("businessName").getAsString(),
+                                    data.get("contactNumber").getAsString(), data.get("location").getAsString());
+                    attributes.add("profile", com.supplygo.protocol.BusinessProfileData.encode(result));
+                    yield Response.ok(id, "BUSINESS_PROFILE", attributes);
                 }
                 case GET_PROFILE -> profile(id, "PROFILE", session.requireUser());
                 case LOGOUT -> { session.logout(); yield Response.ok(id, "SIGNED_OUT"); }

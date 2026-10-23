@@ -14,6 +14,7 @@ public final class ServerMain {
     public static void main(String[] args) {
         Thread shutdownHook = null;
         AccountRepository repository = null;
+        com.supplygo.storage.BusinessProfileRepository profileRepository = null;
         com.supplygo.storage.InventoryRepository inventoryRepository = null;
         try {
             NetworkConfig config = NetworkConfig.load();
@@ -21,6 +22,7 @@ public final class ServerMain {
             SSLContext tls = null;
             AuthService authentication = null;
             com.supplygo.service.InventoryService inventory = null;
+            com.supplygo.service.BusinessProfileService profiles = null;
             if (tlsEnabled) {
                 if (System.getProperty("javax.net.ssl.keyStore", "").isBlank()) {
                     throw new IllegalArgumentException("TLS server requires javax.net.ssl.keyStore; see docs/AUTHENTICATION.md");
@@ -30,13 +32,19 @@ public final class ServerMain {
                 authentication = new AuthService(repository);
                 inventoryRepository = new com.supplygo.storage.InventoryRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
                 inventory = new com.supplygo.service.InventoryService(inventoryRepository);
+                profileRepository = new com.supplygo.storage.BusinessProfileRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
+                profiles = new com.supplygo.service.BusinessProfileService(profileRepository);
             }
             String bindAddress = System.getProperty("supplygo.server.bind", "127.0.0.1");
-            try (SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory)) {
+            try (SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory, profiles)) {
                 AccountRepository store = repository;
+                var businessStore = profileRepository;
                 com.supplygo.storage.InventoryRepository stock = inventoryRepository;
                 shutdownHook = new Thread(() -> {
                     server.close();
+                    if (businessStore != null) {
+                        try { businessStore.close(); } catch (IOException exception) { System.err.println("Could not close business profiles"); }
+                    }
                     if (stock != null) {
                         try { stock.close(); } catch (IOException exception) { System.err.println("Could not close inventory store"); }
                     }
@@ -56,6 +64,9 @@ public final class ServerMain {
             if (shutdownHook != null) {
                 try { Runtime.getRuntime().removeShutdownHook(shutdownHook); }
                 catch (IllegalStateException ignored) { /* Shutdown hook owns cleanup. */ }
+            }
+            if (profileRepository != null) {
+                try { profileRepository.close(); } catch (IOException exception) { System.err.println("Could not close business profiles"); }
             }
             if (inventoryRepository != null) {
                 try { inventoryRepository.close(); } catch (IOException exception) { System.err.println("Could not close inventory store"); }

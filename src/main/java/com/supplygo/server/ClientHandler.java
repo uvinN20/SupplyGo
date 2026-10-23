@@ -17,6 +17,7 @@ import com.supplygo.protocol.Response;
 /** One handler owns each accepted connection and processes its requests in order. */
 public final class ClientHandler implements Runnable {
     private final Socket socket;
+    private com.supplygo.service.BusinessProfileService businessProfiles;
     private final AuthService authentication;
     private final com.supplygo.service.InventoryService inventory;
 
@@ -34,6 +35,11 @@ public final class ClientHandler implements Runnable {
         this.authentication = authentication;
     }
 
+    public ClientHandler(Socket socket, AuthService auth, com.supplygo.service.InventoryService inventory,
+            com.supplygo.service.BusinessProfileService profiles) {
+        this(socket, auth, inventory); this.businessProfiles = profiles;
+    }
+
     @Override
     public void run() {
         try (socket;
@@ -44,7 +50,7 @@ public final class ClientHandler implements Runnable {
                 secure.startHandshake();
                 secure.setSoTimeout(SupplyGoTcpServer.IDLE_TIMEOUT_MS);
             }
-            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory);
+            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, businessProfiles);
             while (!socket.isClosed()) {
                 final String frame;
                 try {

@@ -21,6 +21,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
     public static final int MAX_CLIENTS = 32;
     public static final int IDLE_TIMEOUT_MS = 60_000;
     private final ServerSocket listener;
+    private com.supplygo.service.BusinessProfileService businessProfiles;
     private final ThreadPoolExecutor workers = new ThreadPoolExecutor(0, MAX_CLIENTS, 30, TimeUnit.SECONDS,
             new SynchronousQueue<>(), Thread.ofPlatform().name("supplygo-client-", 1).factory());
     private final Set<Socket> clients = new HashSet<>();
@@ -56,6 +57,11 @@ public final class SupplyGoTcpServer implements AutoCloseable {
         }
     }
 
+    public SupplyGoTcpServer(String address, int port, SSLContext tls, AuthService auth,
+            com.supplygo.service.InventoryService inventory, com.supplygo.service.BusinessProfileService profiles) throws IOException {
+        this(address, port, tls, auth, inventory); this.businessProfiles = profiles;
+    }
+
     public int port() { return listener.getLocalPort(); }
 
     public void serve() throws IOException {
@@ -76,7 +82,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
                         clients.add(socket);
                         workers.execute(() -> {
                             try {
-                                new ClientHandler(socket, this.authentication, this.inventory).run();
+                                new ClientHandler(socket, this.authentication, this.inventory, this.businessProfiles).run();
                             } finally {
                                 synchronized (lifecycle) {
                                     clients.remove(socket);

@@ -46,7 +46,8 @@ public final class ProtocolCodec {
         catch (IllegalArgumentException exception) { throw new ProtocolException("UNKNOWN_TYPE", id, "Unsupported message type"); }
         JsonObject payload = json.getAsJsonObject("payload");
         Set<String> keys = switch (type) {
-            case LIST_PRODUCTS, LIST_BATCHES -> Set.of("offset");
+            case UPDATE_BUSINESS_PROFILE -> Set.of("fullName", "businessName", "contactNumber", "location");
+            case LIST_SUPPLIERS, LIST_SELLERS, LIST_PRODUCTS, LIST_BATCHES -> Set.of("offset");
             case CREATE_PRODUCT -> Set.of("productId", "name");
             case RECEIVE_BATCH, WITHDRAW_STOCK -> Set.of("productId", "quantity");
             case LOGIN -> Set.of("username", "password");
@@ -80,6 +81,20 @@ public final class ProtocolCodec {
             JsonObject data = json.getAsJsonObject("data").deepCopy();
             String message = string(data, "message", id);
             data.remove("message");
+            if (message.equals("BUSINESS_PROFILE") || message.equals("BUSINESS_PROFILES")) {
+                try {
+                    if (message.equals("BUSINESS_PROFILE")) {
+                        if (!data.keySet().equals(Set.of("profile"))) throw new IllegalArgumentException();
+                        BusinessProfileData.decode(data.get("profile"));
+                    } else {
+                        if (!data.keySet().equals(Set.of("profiles", "nextOffset")) || !data.get("profiles").isJsonArray()
+                                || data.getAsJsonArray("profiles").size() > 10) throw new IllegalArgumentException();
+                        integer(data, "nextOffset", -1, 10000, id);
+                        for (JsonElement row : data.getAsJsonArray("profiles")) BusinessProfileData.decode(row);
+                    }
+                } catch (RuntimeException exception) { throw invalid(id, "Invalid business profile response"); }
+                return Response.ok(id, message, data);
+            }
             if (data.isEmpty()) return Response.ok(id, message);
             if (message.equals("PRODUCTS") || message.equals("BATCHES")) {
                 validateInventoryPage(data, message.equals("BATCHES"), id);
