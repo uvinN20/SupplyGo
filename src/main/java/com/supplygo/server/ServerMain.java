@@ -2,11 +2,16 @@ package com.supplygo.server;
 
 import java.io.IOException;
 import java.nio.file.Path;
+
 import javax.net.ssl.SSLContext;
+
 import com.supplygo.config.NetworkConfig;
 import com.supplygo.security.TlsSupport;
 import com.supplygo.service.AuthService;
+import com.supplygo.service.InventoryService;
+import com.supplygo.service.OrderService;
 import com.supplygo.storage.AccountRepository;
+import com.supplygo.storage.InventoryRepository;
 
 /** Starts the TCP backend. TLS enables persistent account operations. */
 public final class ServerMain {
@@ -14,13 +19,14 @@ public final class ServerMain {
     public static void main(String[] args) {
         Thread shutdownHook = null;
         AccountRepository repository = null;
-        com.supplygo.storage.InventoryRepository inventoryRepository = null;
+        InventoryRepository inventoryRepository = null;
         try {
             NetworkConfig config = NetworkConfig.load();
             boolean tlsEnabled = Boolean.getBoolean("supplygo.tls");
             SSLContext tls = null;
             AuthService authentication = null;
-            com.supplygo.service.InventoryService inventory = null;
+            InventoryService inventory = null;
+            OrderService orders = null;
             if (tlsEnabled) {
                 if (System.getProperty("javax.net.ssl.keyStore", "").isBlank()) {
                     throw new IllegalArgumentException("TLS server requires javax.net.ssl.keyStore; see docs/AUTHENTICATION.md");
@@ -28,13 +34,14 @@ public final class ServerMain {
                 tls = TlsSupport.defaultContext();
                 repository = new AccountRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
                 authentication = new AuthService(repository);
-                inventoryRepository = new com.supplygo.storage.InventoryRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
-                inventory = new com.supplygo.service.InventoryService(inventoryRepository);
+                inventoryRepository = new InventoryRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
+                inventory = new InventoryService(inventoryRepository);
+                orders = new OrderService(inventoryRepository);
             }
             String bindAddress = System.getProperty("supplygo.server.bind", "127.0.0.1");
-            try (SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory)) {
+            try (SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory, orders)) {
                 AccountRepository store = repository;
-                com.supplygo.storage.InventoryRepository stock = inventoryRepository;
+                InventoryRepository stock = inventoryRepository;
                 shutdownHook = new Thread(() -> {
                     server.close();
                     if (stock != null) {

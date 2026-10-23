@@ -12,9 +12,13 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
+
 import com.supplygo.service.AuthService;
+import com.supplygo.service.InventoryService;
+import com.supplygo.service.OrderService;
 
 /** Blocking accept loop with at most 32 active clients and no waiting socket queue. */
 public final class SupplyGoTcpServer implements AutoCloseable {
@@ -28,7 +32,8 @@ public final class SupplyGoTcpServer implements AutoCloseable {
     private final AtomicBoolean started = new AtomicBoolean();
     private volatile boolean closed;
     private final AuthService authentication;
-    private final com.supplygo.service.InventoryService inventory;
+    private final InventoryService inventory;
+    private final OrderService orders;
 
     /** Port zero requests an operating-system-assigned port, useful for local tests. */
     public SupplyGoTcpServer(String bindAddress, int port) throws IOException {
@@ -40,12 +45,18 @@ public final class SupplyGoTcpServer implements AutoCloseable {
     }
 
     public SupplyGoTcpServer(String bindAddress, int port, SSLContext tls, AuthService authentication,
-            com.supplygo.service.InventoryService inventory) throws IOException {
+            InventoryService inventory) throws IOException {
+        this(bindAddress, port, tls, authentication, inventory, null);
+    }
+
+    public SupplyGoTcpServer(String bindAddress, int port, SSLContext tls, AuthService authentication,
+            InventoryService inventory, OrderService orders) throws IOException {
         if (bindAddress == null || bindAddress.isBlank()) {
             throw new IllegalArgumentException("Server bind address must not be blank");
         }
         this.authentication = authentication;
         this.inventory = inventory;
+        this.orders = orders;
         listener = tls == null ? new ServerSocket() : tls.getServerSocketFactory().createServerSocket();
         if (listener instanceof SSLServerSocket secure) secure.setEnabledProtocols(new String[]{"TLSv1.3", "TLSv1.2"});
         try {
@@ -76,7 +87,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
                         clients.add(socket);
                         workers.execute(() -> {
                             try {
-                                new ClientHandler(socket, this.authentication, this.inventory).run();
+                                new ClientHandler(socket, this.authentication, this.inventory, this.orders).run();
                             } finally {
                                 synchronized (lifecycle) {
                                     clients.remove(socket);

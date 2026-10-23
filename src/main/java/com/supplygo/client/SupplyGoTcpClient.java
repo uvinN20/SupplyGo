@@ -89,6 +89,36 @@ public final class SupplyGoTcpClient implements AutoCloseable {
         return message(Request.create(receive ? MessageType.RECEIVE_BATCH : MessageType.WITHDRAW_STOCK, payload), "INVENTORY_UPDATED");
     }
 
+    public synchronized com.supplygo.model.SupplyOrder createOrder(String clientOrderId, String productId, int quantity) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("clientOrderId", clientOrderId);
+        payload.addProperty("productId", productId); payload.addProperty("quantity", quantity);
+        return orderReply(exchange(Request.create(MessageType.CREATE_ORDER, payload)));
+    }
+    public synchronized JsonObject orderPage(int offset) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("offset", offset);
+        Response reply = exchange(Request.create(MessageType.LIST_ORDERS, payload));
+        if (!reply.message().equals("ORDERS") || !reply.attributes().has("orders")) throw badReply();
+        return reply.attributes();
+    }
+    public synchronized com.supplygo.model.SupplyOrder getOrder(long orderId) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("orderId", orderId);
+        return orderReply(exchange(Request.create(MessageType.GET_ORDER, payload)));
+    }
+    public synchronized com.supplygo.model.SupplyOrder changeOrder(long orderId, com.supplygo.model.OrderStatus target) throws IOException {
+        MessageType type = switch (target) {
+            case APPROVED -> MessageType.APPROVE_ORDER;
+            case FULFILLED -> MessageType.FULFIL_ORDER;
+            case CANCELLED -> MessageType.CANCEL_ORDER;
+            default -> throw new IllegalArgumentException("Unsupported order action");
+        };
+        JsonObject payload = new JsonObject(); payload.addProperty("orderId", orderId);
+        return orderReply(exchange(Request.create(type, payload)));
+    }
+    private com.supplygo.model.SupplyOrder orderReply(Response reply) throws IOException {
+        if (!reply.message().equals("ORDER") || !reply.attributes().has("order")) throw badReply();
+        return OrderData.decode(reply.attributes().get("order"), reply.requestId());
+    }
+
     private UserProfile account(MessageType type, String username, char[] password, Role role, String expected) throws IOException {
         if (!isSecure()) throw new IOException("Account operations require TLS; no credentials were sent");
         JsonObject payload = new JsonObject();
