@@ -1,41 +1,44 @@
 package com.supplygo.server;
 
 import java.util.Arrays;
+
 import com.google.gson.JsonArray;
-import com.supplygo.protocol.MessageType;
-import com.supplygo.service.InventoryService;
 import com.google.gson.JsonObject;
+import com.supplygo.model.OrderStatus;
 import com.supplygo.model.Role;
 import com.supplygo.model.UserProfile;
+import com.supplygo.protocol.MessageType;
+import com.supplygo.protocol.OrderData;
 import com.supplygo.protocol.Request;
 import com.supplygo.protocol.Response;
 import com.supplygo.service.AuthException;
 import com.supplygo.service.AuthService;
+import com.supplygo.service.InventoryService;
+import com.supplygo.service.OrderService;
 import com.supplygo.service.UserSession;
 
 /** Per-connection dispatch. Clients cannot supply a trusted identity or session role. */
 final class RequestRouter {
     private final AuthService authentication;
     private final boolean secure;
-    private final com.supplygo.service.InventoryService inventory;
-    private com.supplygo.service.BusinessProfileService businessProfiles;
+    private final InventoryService inventory;
+    private final OrderService orders;
+    private final com.supplygo.service.BusinessProfileService businessProfiles;
     private final UserSession session = new UserSession();
 
-    RequestRouter(AuthService authentication, boolean secure, com.supplygo.service.InventoryService inventory) {
+    RequestRouter(AuthService authentication, boolean secure, InventoryService inventory,
+            OrderService orders, com.supplygo.service.BusinessProfileService profiles) {
         this.authentication = authentication;
         this.secure = secure;
         this.inventory = inventory;
-    }
-
-    RequestRouter(AuthService authentication, boolean secure, InventoryService inventory,
-            com.supplygo.service.BusinessProfileService profiles) {
-        this(authentication, secure, inventory); this.businessProfiles = profiles;
+        this.orders = orders;
+        this.businessProfiles = profiles;
     }
 
     Response handle(Request request) {
         String id = request.requestId();
-        if (request.type() == com.supplygo.protocol.MessageType.PING) return Response.ok(id, "PONG");
-        if (request.type() == com.supplygo.protocol.MessageType.QUIT) { session.logout(); return Response.ok(id, "BYE"); }
+        if (request.type() == MessageType.PING) return Response.ok(id, "PONG");
+        if (request.type() == MessageType.QUIT) { session.logout(); return Response.ok(id, "BYE"); }
         if (!secure) return Response.error(id, "TLS_REQUIRED", "Use an encrypted TLS connection for protected operations");
         if (authentication == null) return Response.error(id, "AUTH_UNAVAILABLE", "Authentication is not configured");
         try {
@@ -44,7 +47,7 @@ final class RequestRouter {
                     JsonObject data = request.payload();
                     char[] password = data.get("password").getAsString().toCharArray();
                     try {
-                        if (request.type() == com.supplygo.protocol.MessageType.LOGIN) {
+                        if (request.type() == MessageType.LOGIN) {
                             session.logout();
                             UserProfile profile = authentication.login(data.get("username").getAsString(), password);
                             session.login(profile);
@@ -65,11 +68,35 @@ final class RequestRouter {
                         case WITHDRAW_STOCK -> inventory.withdraw(actor, data.get("productId").getAsString(), data.get("quantity").getAsInt());
                         default -> { }
                     }
-                    if (request.type() == com.supplygo.protocol.MessageType.LIST_PRODUCTS || request.type() == com.supplygo.protocol.MessageType.LIST_BATCHES) {
-                        boolean batches = request.type() == com.supplygo.protocol.MessageType.LIST_BATCHES;
+                    if (request.type() == MessageType.LIST_PRODUCTS || request.type() == MessageType.LIST_BATCHES) {
+                        boolean batches = request.type() == MessageType.LIST_BATCHES;
                         yield Response.ok(id, batches ? "BATCHES" : "PRODUCTS", inventory.list(actor, batches, data.get("offset").getAsInt()));
                     }
                     yield Response.ok(id, "INVENTORY_UPDATED");
+                }
+                case CREATE_ORDER, LIST_ORDERS, GET_ORDER, APPROVE_ORDER, FULFIL_ORDER, CANCEL_ORDER -> {
+                    UserProfile actor = session.requireUser();
+                    if (orders == null) throw new AuthException("ORDERS_UNAVAILABLE", "Orders are not configured");
+                    JsonObject data = request.payload();
+                    JsonObject attributes = new JsonObject();
+                    if (request.type() == MessageType.LIST_ORDERS) {
+                        var page = orders.list(actor, data.get("offset").getAsInt());
+                        var rows = new JsonArray();
+                        page.orders().forEach(order -> rows.add(OrderData.encode(order)));
+                        attributes.add("orders", rows); attributes.addProperty("nextOffset", page.nextOffset());
+                        yield Response.ok(id, "ORDERS", attributes);
+                    }
+                    var order = switch (request.type()) {
+                        case CREATE_ORDER -> orders.create(actor, data.get("clientOrderId").getAsString(),
+                                data.get("productId").getAsString(), data.get("quantity").getAsInt());
+                        case GET_ORDER -> orders.get(actor, data.get("orderId").getAsLong());
+                        case APPROVE_ORDER -> orders.transition(actor, data.get("orderId").getAsLong(), OrderStatus.APPROVED);
+                        case FULFIL_ORDER -> orders.transition(actor, data.get("orderId").getAsLong(), OrderStatus.FULFILLED);
+                        case CANCEL_ORDER -> orders.transition(actor, data.get("orderId").getAsLong(), OrderStatus.CANCELLED);
+                        default -> throw new IllegalStateException("Unhandled order operation");
+                    };
+                    attributes.add("order", OrderData.encode(order));
+                    yield Response.ok(id, "ORDER", attributes);
                 }
                 case GET_BUSINESS_PROFILE, UPDATE_BUSINESS_PROFILE, LIST_SUPPLIERS, LIST_SELLERS -> {
                     UserProfile actor = session.requireUser();

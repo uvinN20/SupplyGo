@@ -47,7 +47,9 @@ public final class ProtocolCodec {
         JsonObject payload = json.getAsJsonObject("payload");
         Set<String> keys = switch (type) {
             case UPDATE_BUSINESS_PROFILE -> Set.of("fullName", "businessName", "contactNumber", "location");
-            case LIST_SUPPLIERS, LIST_SELLERS, LIST_PRODUCTS, LIST_BATCHES -> Set.of("offset");
+            case LIST_SUPPLIERS, LIST_SELLERS, LIST_PRODUCTS, LIST_BATCHES, LIST_ORDERS -> Set.of("offset");
+            case CREATE_ORDER -> Set.of("clientOrderId", "productId", "quantity");
+            case GET_ORDER, APPROVE_ORDER, FULFIL_ORDER, CANCEL_ORDER -> Set.of("orderId");
             case CREATE_PRODUCT -> Set.of("productId", "name");
             case RECEIVE_BATCH, WITHDRAW_STOCK -> Set.of("productId", "quantity");
             case LOGIN -> Set.of("username", "password");
@@ -56,6 +58,10 @@ public final class ProtocolCodec {
         };
         if (!payload.keySet().equals(keys)) throw invalid(id, "Invalid payload fields for " + type);
         for (String key : keys) {
+            if (key.equals("orderId")) {
+                integer(payload, key, 1, Long.MAX_VALUE, id);
+                continue;
+            }
             if (key.equals("offset") || key.equals("quantity")) {
                 if (!(payload.get(key) instanceof JsonPrimitive number) || !number.isNumber()
                         || !number.getAsString().matches("[0-9]{1,7}")) throw invalid(id, key + " must be a nonnegative integer");
@@ -81,6 +87,18 @@ public final class ProtocolCodec {
             JsonObject data = json.getAsJsonObject("data").deepCopy();
             String message = string(data, "message", id);
             data.remove("message");
+            if (message.equals("ORDER")) {
+                if (!data.keySet().equals(Set.of("order"))) throw invalid(id, "Expected order data");
+                OrderData.decode(data.get("order"), id);
+                return Response.ok(id, message, data);
+            }
+            if (message.equals("ORDERS")) {
+                if (!data.keySet().equals(Set.of("orders", "nextOffset")) || !data.get("orders").isJsonArray()
+                        || data.getAsJsonArray("orders").size() > 10) throw invalid(id, "Invalid order page");
+                integer(data, "nextOffset", -1, 10000, id);
+                for (JsonElement order : data.getAsJsonArray("orders")) OrderData.decode(order, id);
+                return Response.ok(id, message, data);
+            }
             if (message.equals("BUSINESS_PROFILE") || message.equals("BUSINESS_PROFILES")) {
                 try {
                     if (message.equals("BUSINESS_PROFILE")) {
@@ -136,9 +154,12 @@ public final class ProtocolCodec {
                     new com.supplygo.model.FruitBatch(integer(row, "id", 1, Long.MAX_VALUE, id), productId,
                             (int) integer(row, "quantity", 1, 1000000, id), string(row, "receivedAt", id), string(row, "receivedBy", id));
                 } else {
-                    if (!row.keySet().equals(Set.of("id", "name", "quantity"))) throw invalid(id, "Invalid product fields");
+                    if (!row.keySet().equals(Set.of("id", "name", "quantity", "onHand", "reserved"))) throw invalid(id, "Invalid product fields");
                     new com.supplygo.model.Product(string(row, "id", id), string(row, "name", id));
-                    integer(row, "quantity", 0, 10_000_000_000L, id);
+                    long available = integer(row, "quantity", 0, 10_000_000_000L, id);
+                    long onHand = integer(row, "onHand", 0, 10_000_000_000L, id);
+                    long reserved = integer(row, "reserved", 0, 10_000_000_000L, id);
+                    if (onHand - reserved != available) throw invalid(id, "Inconsistent stock quantities");
                 }
             } catch (RuntimeException exception) { throw invalid(id, "Invalid inventory row values"); }
         }

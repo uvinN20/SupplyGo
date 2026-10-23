@@ -53,7 +53,7 @@ class AuthIntegrationTest {
         repository = new AccountRepository(data); authentication = new AuthService(repository);
         inventory = new com.supplygo.storage.InventoryRepository(data);
         businessProfiles = new com.supplygo.storage.BusinessProfileRepository(data);
-        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication, new com.supplygo.service.InventoryService(inventory), new com.supplygo.service.BusinessProfileService(businessProfiles));
+        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication, new com.supplygo.service.InventoryService(inventory), new com.supplygo.service.OrderService(inventory), new com.supplygo.service.BusinessProfileService(businessProfiles));
         accept = Thread.ofPlatform().start(() -> { try { server.serve(); } catch (Throwable e) { failure.set(e); } });
     }
     @AfterEach void stop() throws Exception {
@@ -61,6 +61,122 @@ class AuthIntegrationTest {
         assertNull(failure.get()); repository.close(); inventory.close(); businessProfiles.close();
     }
     SupplyGoTcpClient client() { return new SupplyGoTcpClient("localhost", server.port(), clientContext); }
+
+    @Test void profilesAndOrdersShareSessionAndSurviveServerRestart() throws Exception {
+        authentication.provision("admin", PASSWORD.toCharArray(), Role.ADMIN);
+        authentication.provision("seller", PASSWORD.toCharArray(), Role.SELLER);
+        String submission = UUID.randomUUID().toString();
+        long orderId;
+        try (var admin = client(); var seller = client()) {
+            admin.connect(); seller.connect();
+            admin.login("admin", PASSWORD.toCharArray());
+            admin.createProduct("APPLE", "Apple"); admin.changeStock(true, "APPLE", 12);
+            seller.login("seller", PASSWORD.toCharArray());
+            seller.updateBusinessProfile("Seller Name", "Fruit Shop", "0771234567", "Galle");
+            orderId = seller.createOrder(submission, "APPLE", 5).id();
+            assertEquals("Fruit Shop", seller.businessProfile().businessName());
+            assertEquals(7, seller.inventoryPage(false, 0).getAsJsonArray("products").get(0).getAsJsonObject().get("quantity").getAsInt());
+            assertEquals("seller", admin.businessDirectory(false, 0).getAsJsonArray("profiles").get(0).getAsJsonObject().get("username").getAsString());
+            admin.changeOrder(orderId, OrderStatus.APPROVED);
+        }
+        stop(); start();
+        try (var seller = client(); var admin = client()) {
+            seller.connect(); admin.connect();
+            seller.login("seller", PASSWORD.toCharArray()); admin.login("admin", PASSWORD.toCharArray());
+            assertEquals("Fruit Shop", seller.businessProfile().businessName());
+            assertEquals(OrderStatus.APPROVED, seller.getOrder(orderId).status());
+            assertEquals(orderId, seller.createOrder(submission, "APPLE", 5).id());
+            admin.changeOrder(orderId, OrderStatus.FULFILLED);
+            seller.updateBusinessProfile("Seller Name", "Updated Shop", "0771234567", "Matara");
+            assertEquals(OrderStatus.FULFILLED, seller.getOrder(orderId).status());
+            var product = seller.inventoryPage(false, 0).getAsJsonArray("products").get(0).getAsJsonObject();
+            assertEquals(7, product.get("onHand").getAsInt()); assertEquals(0, product.get("reserved").getAsInt());
+            seller.logout();
+            assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, seller::businessProfile).code());
+            assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, () -> seller.getOrder(orderId)).code());
+        }
+    }
+
+    @Test void ordersOverTlsReserveStockEnforceOwnershipAndCompleteLifecycle() throws Exception {
+        authentication.provision("admin", PASSWORD.toCharArray(), Role.ADMIN);
+        authentication.provision("seller", PASSWORD.toCharArray(), Role.SELLER);
+        authentication.provision("other", PASSWORD.toCharArray(), Role.SELLER);
+        try (var manager = client(); var seller = client(); var other = client()) {
+            manager.connect(); seller.connect(); other.connect();
+            assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, () -> seller.orderPage(0)).code());
+            manager.login("admin", PASSWORD.toCharArray()); seller.login("seller", PASSWORD.toCharArray()); other.login("other", PASSWORD.toCharArray());
+            manager.createProduct("APPLE", "Apple"); manager.changeStock(true, "APPLE", 5); manager.changeStock(true, "APPLE", 10);
+            String submission = UUID.randomUUID().toString();
+            var order = seller.createOrder(submission, "APPLE", 8);
+            assertEquals(OrderStatus.PENDING, order.status()); assertEquals("seller", order.sellerUsername());
+            assertEquals(order, seller.createOrder(submission, "APPLE", 8));
+            assertEquals(1, seller.orderPage(0).getAsJsonArray("orders").size());
+            assertTrue(other.orderPage(0).getAsJsonArray("orders").isEmpty());
+            assertEquals("ORDER_NOT_FOUND", assertThrows(ServerRejectedException.class, () -> other.getOrder(order.id())).code());
+            assertEquals("ORDER_NOT_FOUND", assertThrows(ServerRejectedException.class, () -> other.changeOrder(order.id(), OrderStatus.CANCELLED)).code());
+            assertEquals("FORBIDDEN", assertThrows(ServerRejectedException.class, () -> seller.changeOrder(order.id(), OrderStatus.APPROVED)).code());
+            var product = manager.inventoryPage(false, 0).getAsJsonArray("products").get(0).getAsJsonObject();
+            assertEquals(15, product.get("onHand").getAsInt()); assertEquals(8, product.get("reserved").getAsInt()); assertEquals(7, product.get("quantity").getAsInt());
+            assertEquals("INSUFFICIENT_STOCK", assertThrows(ServerRejectedException.class, () -> manager.changeStock(false, "APPLE", 8)).code());
+            manager.changeOrder(order.id(), OrderStatus.APPROVED); manager.changeOrder(order.id(), OrderStatus.FULFILLED);
+            assertEquals(OrderStatus.FULFILLED, seller.getOrder(order.id()).status());
+            assertEquals(7, manager.inventoryPage(true, 0).getAsJsonArray("batches").get(0).getAsJsonObject().get("quantity").getAsInt());
+            var cancelled = seller.createOrder(UUID.randomUUID().toString(), "APPLE", 7);
+            seller.changeOrder(cancelled.id(), OrderStatus.CANCELLED);
+            assertEquals(7, manager.inventoryPage(false, 0).getAsJsonArray("products").get(0).getAsJsonObject().get("quantity").getAsInt());
+            seller.logout(); assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, () -> seller.getOrder(order.id())).code());
+        }
+    }
+
+    @Test void orderRoleMatrixIsEnforcedByTheServer() throws Exception {
+        var stock = new com.supplygo.service.InventoryService(inventory);
+        var admin = new UserProfile("admin", Role.ADMIN); stock.createProduct(admin, "APPLE", "Apple"); stock.receive(admin, "APPLE", 20);
+        var orders = new com.supplygo.service.OrderService(inventory);
+        for (Role role : Role.values()) {
+            String name = role.name().toLowerCase(); authentication.provision(name, PASSWORD.toCharArray(), role);
+            var order = orders.create(new UserProfile("seller", Role.SELLER), UUID.randomUUID().toString(), "APPLE", 1);
+            try (var peer = client()) {
+                peer.connect(); peer.login(name, PASSWORD.toCharArray());
+                if (com.supplygo.service.OrderService.isManager(role)) {
+                    assertFalse(peer.orderPage(0).getAsJsonArray("orders").isEmpty());
+                    assertEquals(OrderStatus.APPROVED, peer.changeOrder(order.id(), OrderStatus.APPROVED).status());
+                    assertEquals(OrderStatus.FULFILLED, peer.changeOrder(order.id(), OrderStatus.FULFILLED).status());
+                } else if (role == Role.SELLER) {
+                    assertEquals("FORBIDDEN", assertThrows(ServerRejectedException.class, () -> peer.changeOrder(order.id(), OrderStatus.APPROVED)).code());
+                } else {
+                    assertEquals("FORBIDDEN", assertThrows(ServerRejectedException.class, () -> peer.orderPage(0)).code());
+                    assertEquals("FORBIDDEN", assertThrows(ServerRejectedException.class, () -> peer.getOrder(order.id())).code());
+                }
+                if (role != Role.SELLER) assertEquals("FORBIDDEN", assertThrows(ServerRejectedException.class,
+                        () -> peer.createOrder(UUID.randomUUID().toString(), "APPLE", 1)).code());
+                assertEquals("PONG", peer.ping());
+            }
+        }
+    }
+
+    @Test void retryAfterUnreadReplyDoesNotReserveTwice() throws Exception {
+        authentication.provision("seller", PASSWORD.toCharArray(), Role.SELLER);
+        var stock = new com.supplygo.service.InventoryService(inventory);
+        var admin = new UserProfile("admin", Role.ADMIN); stock.createProduct(admin, "APPLE", "Apple"); stock.receive(admin, "APPLE", 10);
+        String key = UUID.randomUUID().toString();
+        try (SSLSocket raw = (SSLSocket) clientContext.getSocketFactory().createSocket("localhost", server.port())) {
+            raw.setSoTimeout(5000);
+            JsonObject login = new JsonObject(); login.addProperty("username", "seller"); login.addProperty("password", PASSWORD);
+            FrameIO.write(raw.getOutputStream(), ProtocolCodec.encode(Request.create(MessageType.LOGIN, login)));
+            assertEquals(Response.Status.OK, ProtocolCodec.decodeResponse(FrameIO.read(raw.getInputStream())).status());
+            JsonObject payload = new JsonObject(); payload.addProperty("clientOrderId", key); payload.addProperty("productId", "APPLE"); payload.addProperty("quantity", 7);
+            FrameIO.write(raw.getOutputStream(), ProtocolCodec.encode(Request.create(MessageType.CREATE_ORDER, payload)));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+            while (inventory.snapshot().orders().isEmpty() && System.nanoTime() < deadline) Thread.sleep(10);
+            assertEquals(1, inventory.snapshot().orders().size()); // Close without consuming the reply.
+        }
+        try (var retry = client()) {
+            retry.connect(); retry.login("seller", PASSWORD.toCharArray());
+            assertEquals(1, retry.createOrder(key, "APPLE", 7).id());
+            assertEquals(1, retry.orderPage(0).getAsJsonArray("orders").size());
+            assertEquals(3, retry.inventoryPage(false, 0).getAsJsonArray("products").get(0).getAsJsonObject().get("quantity").getAsInt());
+        }
+    }
 
     @Test void businessProfilesUseSessionIdentityAndSurviveConnections() throws Exception {
         authentication.provision("manager", PASSWORD.toCharArray(), Role.SELLER_MANAGER);

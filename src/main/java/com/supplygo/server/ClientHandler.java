@@ -5,21 +5,26 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+
 import javax.net.ssl.SSLSocket;
-import com.supplygo.service.AuthService;
+
 import com.supplygo.protocol.FrameIO;
 import com.supplygo.protocol.MessageType;
 import com.supplygo.protocol.ProtocolCodec;
 import com.supplygo.protocol.ProtocolException;
 import com.supplygo.protocol.Request;
 import com.supplygo.protocol.Response;
+import com.supplygo.service.AuthService;
+import com.supplygo.service.InventoryService;
+import com.supplygo.service.OrderService;
 
 /** One handler owns each accepted connection and processes its requests in order. */
 public final class ClientHandler implements Runnable {
     private final Socket socket;
-    private com.supplygo.service.BusinessProfileService businessProfiles;
     private final AuthService authentication;
-    private final com.supplygo.service.InventoryService inventory;
+    private final InventoryService inventory;
+    private final OrderService orders;
+    private final com.supplygo.service.BusinessProfileService businessProfiles;
 
     public ClientHandler(Socket socket) {
         this(socket, null);
@@ -29,15 +34,22 @@ public final class ClientHandler implements Runnable {
         this(socket, authentication, null);
     }
 
-    public ClientHandler(Socket socket, AuthService authentication, com.supplygo.service.InventoryService inventory) {
+    public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory) {
+        this(socket, authentication, inventory, null);
+    }
+
+    public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory,
+            OrderService orders) {
+        this(socket, authentication, inventory, orders, null);
+    }
+
+    public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory, OrderService orders,
+            com.supplygo.service.BusinessProfileService businessProfiles) {
+        this.businessProfiles = businessProfiles;
+        this.orders = orders;
         this.inventory = inventory;
         this.socket = socket;
         this.authentication = authentication;
-    }
-
-    public ClientHandler(Socket socket, AuthService auth, com.supplygo.service.InventoryService inventory,
-            com.supplygo.service.BusinessProfileService profiles) {
-        this(socket, auth, inventory); this.businessProfiles = profiles;
     }
 
     @Override
@@ -50,7 +62,7 @@ public final class ClientHandler implements Runnable {
                 secure.startHandshake();
                 secure.setSoTimeout(SupplyGoTcpServer.IDLE_TIMEOUT_MS);
             }
-            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, businessProfiles);
+            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, orders, businessProfiles);
             while (!socket.isClosed()) {
                 final String frame;
                 try {
