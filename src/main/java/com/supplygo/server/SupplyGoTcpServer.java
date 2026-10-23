@@ -34,6 +34,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
     private final AuthService authentication;
     private final InventoryService inventory;
     private final OrderService orders;
+    private final com.supplygo.service.BusinessProfileService businessProfiles;
 
     /** Port zero requests an operating-system-assigned port, useful for local tests. */
     public SupplyGoTcpServer(String bindAddress, int port) throws IOException {
@@ -51,6 +52,12 @@ public final class SupplyGoTcpServer implements AutoCloseable {
 
     public SupplyGoTcpServer(String bindAddress, int port, SSLContext tls, AuthService authentication,
             InventoryService inventory, OrderService orders) throws IOException {
+        this(bindAddress, port, tls, authentication, inventory, orders, null);
+    }
+
+    public SupplyGoTcpServer(String bindAddress, int port, SSLContext tls, AuthService authentication,
+            InventoryService inventory, OrderService orders, com.supplygo.service.BusinessProfileService profiles) throws IOException {
+        this.businessProfiles = profiles;
         if (bindAddress == null || bindAddress.isBlank()) {
             throw new IllegalArgumentException("Server bind address must not be blank");
         }
@@ -87,7 +94,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
                         clients.add(socket);
                         workers.execute(() -> {
                             try {
-                                new ClientHandler(socket, this.authentication, this.inventory, this.orders).run();
+                                new ClientHandler(socket, this.authentication, this.inventory, this.orders, this.businessProfiles).run();
                             } finally {
                                 synchronized (lifecycle) {
                                     clients.remove(socket);

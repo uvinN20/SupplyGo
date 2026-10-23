@@ -23,14 +23,16 @@ final class RequestRouter {
     private final boolean secure;
     private final InventoryService inventory;
     private final OrderService orders;
+    private final com.supplygo.service.BusinessProfileService businessProfiles;
     private final UserSession session = new UserSession();
 
     RequestRouter(AuthService authentication, boolean secure, InventoryService inventory,
-            OrderService orders) {
+            OrderService orders, com.supplygo.service.BusinessProfileService profiles) {
         this.authentication = authentication;
         this.secure = secure;
         this.inventory = inventory;
         this.orders = orders;
+        this.businessProfiles = profiles;
     }
 
     Response handle(Request request) {
@@ -95,6 +97,23 @@ final class RequestRouter {
                     };
                     attributes.add("order", OrderData.encode(order));
                     yield Response.ok(id, "ORDER", attributes);
+                }
+                case GET_BUSINESS_PROFILE, UPDATE_BUSINESS_PROFILE, LIST_SUPPLIERS, LIST_SELLERS -> {
+                    UserProfile actor = session.requireUser();
+                    if (businessProfiles == null) throw new AuthException("PROFILES_UNAVAILABLE", "Business profiles are not configured");
+                    JsonObject data = request.payload(), attributes = new JsonObject();
+                    if (request.type() == MessageType.LIST_SUPPLIERS || request.type() == MessageType.LIST_SELLERS) {
+                        var page = businessProfiles.list(actor, request.type() == MessageType.LIST_SUPPLIERS ? Role.SUPPLIER : Role.SELLER,
+                                data.get("offset").getAsInt());
+                        JsonArray rows = new JsonArray(); page.profiles().forEach(p -> rows.add(com.supplygo.protocol.BusinessProfileData.encode(p)));
+                        attributes.add("profiles", rows); attributes.addProperty("nextOffset", page.nextOffset());
+                        yield Response.ok(id, "BUSINESS_PROFILES", attributes);
+                    }
+                    var result = request.type() == MessageType.GET_BUSINESS_PROFILE ? businessProfiles.get(actor)
+                            : businessProfiles.update(actor, data.get("fullName").getAsString(), data.get("businessName").getAsString(),
+                                    data.get("contactNumber").getAsString(), data.get("location").getAsString());
+                    attributes.add("profile", com.supplygo.protocol.BusinessProfileData.encode(result));
+                    yield Response.ok(id, "BUSINESS_PROFILE", attributes);
                 }
                 case GET_PROFILE -> profile(id, "PROFILE", session.requireUser());
                 case LOGOUT -> { session.logout(); yield Response.ok(id, "SIGNED_OUT"); }

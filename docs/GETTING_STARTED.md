@@ -155,3 +155,5 @@ The Orders tab lets sellers place and track orders. Administrators, seller
 managers and production managers can approve, fulfil or cancel them. Inventory
 shows available, on-hand and reserved units. Before upgrading existing inventory
 data, read the migration and backup instructions in [ORDERS.md](ORDERS.md).
+
+For supplier/seller profiles and manager directories, see [Business profiles](BUSINESS_PROFILES.md).

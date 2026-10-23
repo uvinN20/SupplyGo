@@ -119,6 +119,25 @@ public final class SupplyGoTcpClient implements AutoCloseable {
         return OrderData.decode(reply.attributes().get("order"), reply.requestId());
     }
 
+    public synchronized com.supplygo.model.BusinessProfile businessProfile() throws IOException {
+        return businessReply(exchange(Request.create(MessageType.GET_BUSINESS_PROFILE)));
+    }
+    public synchronized com.supplygo.model.BusinessProfile updateBusinessProfile(String name, String business, String phone, String location) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("fullName", name); payload.addProperty("businessName", business);
+        payload.addProperty("contactNumber", phone); payload.addProperty("location", location);
+        return businessReply(exchange(Request.create(MessageType.UPDATE_BUSINESS_PROFILE, payload)));
+    }
+    public synchronized JsonObject businessDirectory(boolean suppliers, int offset) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("offset", offset);
+        Response reply = exchange(Request.create(suppliers ? MessageType.LIST_SUPPLIERS : MessageType.LIST_SELLERS, payload));
+        if (!reply.message().equals("BUSINESS_PROFILES") || !reply.attributes().has("profiles")) throw badReply();
+        return reply.attributes();
+    }
+    private com.supplygo.model.BusinessProfile businessReply(Response reply) throws IOException {
+        if (!reply.message().equals("BUSINESS_PROFILE") || !reply.attributes().has("profile")) throw badReply();
+        return BusinessProfileData.decode(reply.attributes().get("profile"));
+    }
+
     private UserProfile account(MessageType type, String username, char[] password, Role role, String expected) throws IOException {
         if (!isSecure()) throw new IOException("Account operations require TLS; no credentials were sent");
         JsonObject payload = new JsonObject();

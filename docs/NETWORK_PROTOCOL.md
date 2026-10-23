@@ -188,3 +188,7 @@ Additional errors: `ORDERS_UNAVAILABLE`, `INVALID_ORDER`, `ORDER_NOT_FOUND`,
 permission errors apply. All are correlated application errors and preserve the
 connection. Roles, allowed transitions, atomic reservations and recovery rules
 are documented in [ORDERS.md](ORDERS.md).
+
+## Business profiles
+
+Authenticated TLS clients support GET_BUSINESS_PROFILE, UPDATE_BUSINESS_PROFILE, LIST_SUPPLIERS and LIST_SELLERS. See [BUSINESS_PROFILES.md](BUSINESS_PROFILES.md) for exact payloads, responses, validation, pagination and permissions.

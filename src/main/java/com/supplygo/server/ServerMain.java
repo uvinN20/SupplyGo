@@ -20,6 +20,7 @@ public final class ServerMain {
         Thread shutdownHook = null;
         AccountRepository repository = null;
         InventoryRepository inventoryRepository = null;
+        com.supplygo.storage.BusinessProfileRepository profileRepository = null;
         try {
             NetworkConfig config = NetworkConfig.load();
             boolean tlsEnabled = Boolean.getBoolean("supplygo.tls");
@@ -27,6 +28,7 @@ public final class ServerMain {
             AuthService authentication = null;
             InventoryService inventory = null;
             OrderService orders = null;
+            com.supplygo.service.BusinessProfileService profiles = null;
             if (tlsEnabled) {
                 if (System.getProperty("javax.net.ssl.keyStore", "").isBlank()) {
                     throw new IllegalArgumentException("TLS server requires javax.net.ssl.keyStore; see docs/AUTHENTICATION.md");
@@ -37,13 +39,19 @@ public final class ServerMain {
                 inventoryRepository = new InventoryRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
                 inventory = new InventoryService(inventoryRepository);
                 orders = new OrderService(inventoryRepository);
+                profileRepository = new com.supplygo.storage.BusinessProfileRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
+                profiles = new com.supplygo.service.BusinessProfileService(profileRepository);
             }
             String bindAddress = System.getProperty("supplygo.server.bind", "127.0.0.1");
-            try (SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory, orders)) {
+            try (SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory, orders, profiles)) {
                 AccountRepository store = repository;
+                var businessStore = profileRepository;
                 InventoryRepository stock = inventoryRepository;
                 shutdownHook = new Thread(() -> {
                     server.close();
+                    if (businessStore != null) {
+                        try { businessStore.close(); } catch (IOException exception) { System.err.println("Could not close business profiles"); }
+                    }
                     if (stock != null) {
                         try { stock.close(); } catch (IOException exception) { System.err.println("Could not close inventory store"); }
                     }
@@ -63,6 +71,9 @@ public final class ServerMain {
             if (shutdownHook != null) {
                 try { Runtime.getRuntime().removeShutdownHook(shutdownHook); }
                 catch (IllegalStateException ignored) { /* Shutdown hook owns cleanup. */ }
+            }
+            if (profileRepository != null) {
+                try { profileRepository.close(); } catch (IOException exception) { System.err.println("Could not close business profiles"); }
             }
             if (inventoryRepository != null) {
                 try { inventoryRepository.close(); } catch (IOException exception) { System.err.println("Could not close inventory store"); }

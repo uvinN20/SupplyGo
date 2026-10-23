@@ -28,6 +28,7 @@ class AuthIntegrationTest {
     AccountRepository repository;
     AuthService authentication;
     com.supplygo.storage.InventoryRepository inventory;
+    com.supplygo.storage.BusinessProfileRepository businessProfiles;
     SupplyGoTcpServer server;
     Thread accept;
     AtomicReference<Throwable> failure = new AtomicReference<>();
@@ -51,14 +52,50 @@ class AuthIntegrationTest {
     @BeforeEach void start() throws Exception {
         repository = new AccountRepository(data); authentication = new AuthService(repository);
         inventory = new com.supplygo.storage.InventoryRepository(data);
-        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication, new com.supplygo.service.InventoryService(inventory), new com.supplygo.service.OrderService(inventory));
+        businessProfiles = new com.supplygo.storage.BusinessProfileRepository(data);
+        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication, new com.supplygo.service.InventoryService(inventory), new com.supplygo.service.OrderService(inventory), new com.supplygo.service.BusinessProfileService(businessProfiles));
         accept = Thread.ofPlatform().start(() -> { try { server.serve(); } catch (Throwable e) { failure.set(e); } });
     }
     @AfterEach void stop() throws Exception {
         server.close(); accept.join(3000); assertFalse(accept.isAlive());
-        assertNull(failure.get()); repository.close(); inventory.close();
+        assertNull(failure.get()); repository.close(); inventory.close(); businessProfiles.close();
     }
     SupplyGoTcpClient client() { return new SupplyGoTcpClient("localhost", server.port(), clientContext); }
+
+    @Test void profilesAndOrdersShareSessionAndSurviveServerRestart() throws Exception {
+        authentication.provision("admin", PASSWORD.toCharArray(), Role.ADMIN);
+        authentication.provision("seller", PASSWORD.toCharArray(), Role.SELLER);
+        String submission = UUID.randomUUID().toString();
+        long orderId;
+        try (var admin = client(); var seller = client()) {
+            admin.connect(); seller.connect();
+            admin.login("admin", PASSWORD.toCharArray());
+            admin.createProduct("APPLE", "Apple"); admin.changeStock(true, "APPLE", 12);
+            seller.login("seller", PASSWORD.toCharArray());
+            seller.updateBusinessProfile("Seller Name", "Fruit Shop", "0771234567", "Galle");
+            orderId = seller.createOrder(submission, "APPLE", 5).id();
+            assertEquals("Fruit Shop", seller.businessProfile().businessName());
+            assertEquals(7, seller.inventoryPage(false, 0).getAsJsonArray("products").get(0).getAsJsonObject().get("quantity").getAsInt());
+            assertEquals("seller", admin.businessDirectory(false, 0).getAsJsonArray("profiles").get(0).getAsJsonObject().get("username").getAsString());
+            admin.changeOrder(orderId, OrderStatus.APPROVED);
+        }
+        stop(); start();
+        try (var seller = client(); var admin = client()) {
+            seller.connect(); admin.connect();
+            seller.login("seller", PASSWORD.toCharArray()); admin.login("admin", PASSWORD.toCharArray());
+            assertEquals("Fruit Shop", seller.businessProfile().businessName());
+            assertEquals(OrderStatus.APPROVED, seller.getOrder(orderId).status());
+            assertEquals(orderId, seller.createOrder(submission, "APPLE", 5).id());
+            admin.changeOrder(orderId, OrderStatus.FULFILLED);
+            seller.updateBusinessProfile("Seller Name", "Updated Shop", "0771234567", "Matara");
+            assertEquals(OrderStatus.FULFILLED, seller.getOrder(orderId).status());
+            var product = seller.inventoryPage(false, 0).getAsJsonArray("products").get(0).getAsJsonObject();
+            assertEquals(7, product.get("onHand").getAsInt()); assertEquals(0, product.get("reserved").getAsInt());
+            seller.logout();
+            assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, seller::businessProfile).code());
+            assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, () -> seller.getOrder(orderId)).code());
+        }
+    }
 
     @Test void ordersOverTlsReserveStockEnforceOwnershipAndCompleteLifecycle() throws Exception {
         authentication.provision("admin", PASSWORD.toCharArray(), Role.ADMIN);
@@ -138,6 +175,49 @@ class AuthIntegrationTest {
             assertEquals(1, retry.createOrder(key, "APPLE", 7).id());
             assertEquals(1, retry.orderPage(0).getAsJsonArray("orders").size());
             assertEquals(3, retry.inventoryPage(false, 0).getAsJsonArray("products").get(0).getAsJsonObject().get("quantity").getAsInt());
+        }
+    }
+
+    @Test void businessProfilesUseSessionIdentityAndSurviveConnections() throws Exception {
+        authentication.provision("manager", PASSWORD.toCharArray(), Role.SELLER_MANAGER);
+        try (var seller = client(); var other = client(); var manager = client()) {
+            seller.connect(); other.connect(); manager.connect();
+            assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, seller::businessProfile).code());
+            seller.register("seller", PASSWORD.toCharArray(), Role.SELLER); seller.login("seller", PASSWORD.toCharArray());
+            assertEquals("PROFILE_NOT_FOUND", assertThrows(ServerRejectedException.class, seller::businessProfile).code());
+            var saved = seller.updateBusinessProfile("Seller Name", "Fruit Shop", "0771234567", "Galle");
+            assertEquals("seller", saved.username()); assertEquals(saved, seller.businessProfile());
+            other.register("other", PASSWORD.toCharArray(), Role.SELLER); other.login("other", PASSWORD.toCharArray());
+            assertEquals("PROFILE_NOT_FOUND", assertThrows(ServerRejectedException.class, other::businessProfile).code());
+            assertEquals("FORBIDDEN", assertThrows(ServerRejectedException.class, () -> other.businessDirectory(false, 0)).code());
+            manager.login("manager", PASSWORD.toCharArray());
+            assertEquals(1, manager.businessDirectory(false, 0).getAsJsonArray("profiles").size());
+            assertEquals("FORBIDDEN", assertThrows(ServerRejectedException.class, () -> manager.businessDirectory(true, 0)).code());
+            assertEquals("FORBIDDEN", assertThrows(ServerRejectedException.class, () -> manager.updateBusinessProfile("Name", "Shop", "0771234567", "Town")).code());
+            assertEquals("INVALID_PROFILE", assertThrows(ServerRejectedException.class, () -> seller.updateBusinessProfile("", "Shop", "0771234567", "Town")).code());
+            assertEquals("PONG", seller.ping()); seller.logout();
+            assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, seller::businessProfile).code());
+        }
+        try (var reconnected = client()) {
+            reconnected.connect(); reconnected.login("seller", PASSWORD.toCharArray()); assertEquals("Fruit Shop", reconnected.businessProfile().businessName());
+        }
+    }
+
+    @Test void plainTcpRejectsAllBusinessProfileOperations() throws Exception {
+        try (var plain = new SupplyGoTcpServer("127.0.0.1", 0)) {
+            Thread thread = Thread.ofPlatform().start(() -> { try { plain.serve(); } catch (IOException e) { failure.set(e); } });
+            try (var socket = new java.net.Socket("127.0.0.1", plain.port())) {
+                socket.setSoTimeout(5000);
+                for (MessageType type : new MessageType[]{MessageType.GET_BUSINESS_PROFILE, MessageType.UPDATE_BUSINESS_PROFILE, MessageType.LIST_SUPPLIERS, MessageType.LIST_SELLERS}) {
+                    JsonObject payload = new JsonObject();
+                    if (type == MessageType.LIST_SUPPLIERS || type == MessageType.LIST_SELLERS) payload.addProperty("offset", 0);
+                    if (type == MessageType.UPDATE_BUSINESS_PROFILE) {
+                        payload.addProperty("fullName", "Name"); payload.addProperty("businessName", "Shop"); payload.addProperty("contactNumber", "0771234567"); payload.addProperty("location", "Town");
+                    }
+                    FrameIO.write(socket.getOutputStream(), ProtocolCodec.encode(Request.create(type, payload)));
+                    assertEquals("TLS_REQUIRED", ProtocolCodec.decodeResponse(FrameIO.read(socket.getInputStream())).errorCode());
+                }
+            } finally { plain.close(); thread.join(3000); }
         }
     }
 

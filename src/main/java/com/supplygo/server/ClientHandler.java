@@ -24,6 +24,7 @@ public final class ClientHandler implements Runnable {
     private final AuthService authentication;
     private final InventoryService inventory;
     private final OrderService orders;
+    private final com.supplygo.service.BusinessProfileService businessProfiles;
 
     public ClientHandler(Socket socket) {
         this(socket, null);
@@ -39,6 +40,12 @@ public final class ClientHandler implements Runnable {
 
     public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory,
             OrderService orders) {
+        this(socket, authentication, inventory, orders, null);
+    }
+
+    public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory, OrderService orders,
+            com.supplygo.service.BusinessProfileService businessProfiles) {
+        this.businessProfiles = businessProfiles;
         this.orders = orders;
         this.inventory = inventory;
         this.socket = socket;
@@ -55,7 +62,7 @@ public final class ClientHandler implements Runnable {
                 secure.startHandshake();
                 secure.setSoTimeout(SupplyGoTcpServer.IDLE_TIMEOUT_MS);
             }
-            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, orders);
+            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, orders, businessProfiles);
             while (!socket.isClosed()) {
                 final String frame;
                 try {
