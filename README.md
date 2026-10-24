@@ -143,6 +143,7 @@ The project will aim to demonstrate:
 | :--- | :--- |
 | Project member | [@uvinN20](https://github.com/uvinN20) |
 | Project member | [@gsubodha2023-hue](https://github.com/gsubodha2023-hue) |
+| Yasiru Rashmika | [@yasirurashmika](https://github.com/yasirurashmika) |
 
 ## 🎓 Academic Context
 
