@@ -3,7 +3,8 @@
 This milestone connects a Swing desktop frontend to a concurrent Java TCP server.
 You can connect, send PING requests, receive PONG, disconnect, and reconnect.
 TLS account registration and sign-in are documented in [AUTHENTICATION.md](AUTHENTICATION.md).
-Inventory, orders, and UDP chat follow in later tasks.
+Inventory, orders and business profiles are available; their guides are linked below.
+UDP chat remains planned.
 
 ## Requirements
 
@@ -22,27 +23,22 @@ mvn -version
 
 Maven must report JDK 25. Otherwise correct `JAVA_HOME` and reopen the terminal.
 
-## Get the feature and build
-
-During pull request review, use this branch. After it is merged, use `main`.
-Commit or stash existing local changes before switching branches.
-
-```bat
-cd C:\Users\uvinn\SupplyGo
-git fetch origin
-git switch feature/tcp-server-client
-git pull --ff-only origin feature/tcp-server-client
-mvn clean verify
-```
-
-If the branch is not available locally, use
-`git switch --track origin/feature/tcp-server-client` after fetching.
+## Get the project and build
 
 For a new checkout:
 
 ```bat
-git clone --branch feature/tcp-server-client https://github.com/uvinN20/SupplyGo.git
+git clone https://github.com/uvinN20/SupplyGo.git
 cd SupplyGo
+mvn clean verify
+```
+
+For an existing checkout, commit or stash local changes, switch to `main`,
+and pull the latest changes before building:
+
+```bat
+git switch main
+git pull --ff-only origin main
 mvn clean verify
 ```
 
@@ -106,7 +102,7 @@ java -Dsupplygo.server.host=192.168.1.10 -jar target/supplygo-0.1.0-SNAPSHOT.jar
 Both laptops must be on a reachable local network. If Windows Firewall prompts,
 allow the server on your private network. Do not enter `0.0.0.0` as the client
 address: it is a server listening option. This is a plain TCP classroom demo;
-real account credentials require the later TLS/authentication implementation.
+account and business operations require the TLS setup in [AUTHENTICATION.md](AUTHENTICATION.md).
 
 ## Configuration and connection limits
 
@@ -144,7 +140,7 @@ response correlation, timeouts, and shutdown. Tests bind temporary ports.
 
 Use Java throughout. Work on task branches, review pull requests, and use commits
 such as `feat(network): add TCP request handling`. The server owns shared state;
-future clients must not access repositories directly. See
+clients must not access repositories directly. See
 [NETWORK_PROTOCOL.md](NETWORK_PROTOCOL.md) and [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md).
 
 After signing in over TLS, use the Inventory tab to browse stock. Administrators
