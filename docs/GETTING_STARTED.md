@@ -3,7 +3,7 @@
 This milestone connects a Swing desktop frontend to a concurrent Java TCP server.
 You can connect, send PING requests, receive PONG, disconnect, and reconnect.
 TLS account registration and sign-in are documented in [AUTHENTICATION.md](AUTHENTICATION.md).
-Inventory, orders, and UDP chat follow in later tasks.
+Inventory, orders, business profiles and a shared UDP chat room are also implemented.
 
 ## Requirements
 
@@ -116,7 +116,7 @@ Put Java `-D` options **before** `-jar`.
 | --- | --- | --- |
 | `supplygo.server.host` | `127.0.0.1` | Initial frontend server field |
 | `supplygo.tcp.port` | `7070` | Server port and initial frontend port |
-| `supplygo.udp.port` | `7071` | Reserved; no UDP listener is started |
+| `supplygo.udp.port` | `7071` | UDP chat listener port on the TLS server |
 | `supplygo.server.bind` | `127.0.0.1` | Server-only listening address, set with `-D` |
 
 The first three defaults are in `src/main/resources/supplygo.properties`.
@@ -157,3 +157,5 @@ shows available, on-hand and reserved units. Before upgrading existing inventory
 data, read the migration and backup instructions in [ORDERS.md](ORDERS.md).
 
 For supplier/seller profiles and manager directories, see [Business profiles](BUSINESS_PROFILES.md).
+
+For the shared room, LAN setup and UDP delivery behavior, see [UDP_CHAT.md](UDP_CHAT.md).
