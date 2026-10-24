@@ -29,6 +29,7 @@ class AuthIntegrationTest {
     AuthService authentication;
     com.supplygo.storage.InventoryRepository inventory;
     com.supplygo.storage.BusinessProfileRepository businessProfiles;
+    com.supplygo.server.UdpChatServer chat;
     SupplyGoTcpServer server;
     Thread accept;
     AtomicReference<Throwable> failure = new AtomicReference<>();
@@ -53,14 +54,48 @@ class AuthIntegrationTest {
         repository = new AccountRepository(data); authentication = new AuthService(repository);
         inventory = new com.supplygo.storage.InventoryRepository(data);
         businessProfiles = new com.supplygo.storage.BusinessProfileRepository(data);
-        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication, new com.supplygo.service.InventoryService(inventory), new com.supplygo.service.OrderService(inventory), new com.supplygo.service.BusinessProfileService(businessProfiles));
+        chat = new com.supplygo.server.UdpChatServer("127.0.0.1", 0); chat.start();
+        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication, new com.supplygo.service.InventoryService(inventory), new com.supplygo.service.OrderService(inventory), new com.supplygo.service.BusinessProfileService(businessProfiles), chat);
         accept = Thread.ofPlatform().start(() -> { try { server.serve(); } catch (Throwable e) { failure.set(e); } });
     }
     @AfterEach void stop() throws Exception {
         server.close(); accept.join(3000); assertFalse(accept.isAlive());
-        assertNull(failure.get()); repository.close(); inventory.close(); businessProfiles.close();
+        assertNull(failure.get()); chat.close(); repository.close(); inventory.close(); businessProfiles.close();
     }
     SupplyGoTcpClient client() { return new SupplyGoTcpClient("localhost", server.port(), clientContext); }
+
+    @Test void chatAuthorizationRequiresLoginAndRevokesOnLogoutReplacementAndDisconnect() throws Exception {
+        authentication.provision("seller", PASSWORD.toCharArray(), Role.SELLER);
+        try (var tcp = client()) {
+            tcp.connect(); assertEquals("AUTH_REQUIRED", assertThrows(ServerRejectedException.class, tcp::openChat).code());
+            tcp.login("seller", PASSWORD.toCharArray());
+            var first = tcp.openChat(); var second = tcp.openChat();
+            assertNotEquals(first.ticket(), second.ticket()); assertEquals(1, chat.participantCount());
+            var inbox = new java.util.concurrent.LinkedBlockingQueue<UdpChatClient.Message>();
+            try (var udp = new UdpChatClient(tcp.chatAddress(), second, inbox::add)) {
+                udp.join(); udp.send("TLS authorized sender"); assertEquals("seller", inbox.poll(2, TimeUnit.SECONDS).sender());
+                tcp.logout(); assertEquals(0, chat.participantCount());
+            }
+            tcp.login("seller", PASSWORD.toCharArray()); tcp.openChat(); tcp.closeChat(); assertEquals(0, chat.participantCount());
+            tcp.openChat();
+            assertThrows(ServerRejectedException.class, () -> tcp.login("seller", "incorrect password".toCharArray()));
+            assertEquals(0, chat.participantCount());
+            tcp.login("seller", PASSWORD.toCharArray()); tcp.openChat(); assertEquals(1, chat.participantCount());
+        }
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (chat.participantCount() != 0 && System.nanoTime() < deadline) Thread.sleep(10);
+        assertEquals(0, chat.participantCount());
+    }
+
+    @Test void everySignedInRoleCanRequestChatAccess() throws Exception {
+        for (Role role : Role.values()) {
+            authentication.provision(role.name().toLowerCase(), PASSWORD.toCharArray(), role);
+            try (var tcp = client()) {
+                tcp.connect(); tcp.login(role.name().toLowerCase(), PASSWORD.toCharArray());
+                assertEquals(chat.port(), tcp.openChat().port()); tcp.closeChat();
+            }
+        }
+    }
 
     @Test void profilesAndOrdersShareSessionAndSurviveServerRestart() throws Exception {
         authentication.provision("admin", PASSWORD.toCharArray(), Role.ADMIN);
@@ -208,7 +243,7 @@ class AuthIntegrationTest {
             Thread thread = Thread.ofPlatform().start(() -> { try { plain.serve(); } catch (IOException e) { failure.set(e); } });
             try (var socket = new java.net.Socket("127.0.0.1", plain.port())) {
                 socket.setSoTimeout(5000);
-                for (MessageType type : new MessageType[]{MessageType.GET_BUSINESS_PROFILE, MessageType.UPDATE_BUSINESS_PROFILE, MessageType.LIST_SUPPLIERS, MessageType.LIST_SELLERS}) {
+                for (MessageType type : new MessageType[]{MessageType.OPEN_CHAT, MessageType.CLOSE_CHAT, MessageType.GET_BUSINESS_PROFILE, MessageType.UPDATE_BUSINESS_PROFILE, MessageType.LIST_SUPPLIERS, MessageType.LIST_SELLERS}) {
                     JsonObject payload = new JsonObject();
                     if (type == MessageType.LIST_SUPPLIERS || type == MessageType.LIST_SELLERS) payload.addProperty("offset", 0);
                     if (type == MessageType.UPDATE_BUSINESS_PROFILE) {

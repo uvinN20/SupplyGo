@@ -21,6 +21,7 @@ import com.supplygo.service.OrderService;
 /** One handler owns each accepted connection and processes its requests in order. */
 public final class ClientHandler implements Runnable {
     private final Socket socket;
+    private final UdpChatServer chat;
     private final AuthService authentication;
     private final InventoryService inventory;
     private final OrderService orders;
@@ -45,6 +46,12 @@ public final class ClientHandler implements Runnable {
 
     public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory, OrderService orders,
             com.supplygo.service.BusinessProfileService businessProfiles) {
+        this(socket, authentication, inventory, orders, businessProfiles, null);
+    }
+
+    public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory, OrderService orders,
+            com.supplygo.service.BusinessProfileService businessProfiles, UdpChatServer chat) {
+        this.chat = chat;
         this.businessProfiles = businessProfiles;
         this.orders = orders;
         this.inventory = inventory;
@@ -54,7 +61,8 @@ public final class ClientHandler implements Runnable {
 
     @Override
     public void run() {
-        try (socket;
+        try (RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, orders, businessProfiles, chat, socket.getInetAddress());
+                socket;
                 var input = new BufferedInputStream(socket.getInputStream());
                 var output = new BufferedOutputStream(socket.getOutputStream())) {
             if (socket instanceof SSLSocket secure) {
@@ -62,7 +70,6 @@ public final class ClientHandler implements Runnable {
                 secure.startHandshake();
                 secure.setSoTimeout(SupplyGoTcpServer.IDLE_TIMEOUT_MS);
             }
-            RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, orders, businessProfiles);
             while (!socket.isClosed()) {
                 final String frame;
                 try {

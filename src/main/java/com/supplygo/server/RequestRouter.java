@@ -18,16 +18,25 @@ import com.supplygo.service.OrderService;
 import com.supplygo.service.UserSession;
 
 /** Per-connection dispatch. Clients cannot supply a trusted identity or session role. */
-final class RequestRouter {
+final class RequestRouter implements AutoCloseable {
     private final AuthService authentication;
     private final boolean secure;
     private final InventoryService inventory;
     private final OrderService orders;
     private final com.supplygo.service.BusinessProfileService businessProfiles;
+    private final UdpChatServer chat;
+    private final java.net.InetAddress peer;
+    private String chatTicket;
     private final UserSession session = new UserSession();
 
     RequestRouter(AuthService authentication, boolean secure, InventoryService inventory,
             OrderService orders, com.supplygo.service.BusinessProfileService profiles) {
+        this(authentication, secure, inventory, orders, profiles, null, null);
+    }
+
+    RequestRouter(AuthService authentication, boolean secure, InventoryService inventory,
+            OrderService orders, com.supplygo.service.BusinessProfileService profiles, UdpChatServer chat, java.net.InetAddress peer) {
+        this.chat = chat; this.peer = peer;
         this.authentication = authentication;
         this.secure = secure;
         this.inventory = inventory;
@@ -38,7 +47,7 @@ final class RequestRouter {
     Response handle(Request request) {
         String id = request.requestId();
         if (request.type() == MessageType.PING) return Response.ok(id, "PONG");
-        if (request.type() == MessageType.QUIT) { session.logout(); return Response.ok(id, "BYE"); }
+        if (request.type() == MessageType.QUIT) { close(); session.logout(); return Response.ok(id, "BYE"); }
         if (!secure) return Response.error(id, "TLS_REQUIRED", "Use an encrypted TLS connection for protected operations");
         if (authentication == null) return Response.error(id, "AUTH_UNAVAILABLE", "Authentication is not configured");
         try {
@@ -48,7 +57,7 @@ final class RequestRouter {
                     char[] password = data.get("password").getAsString().toCharArray();
                     try {
                         if (request.type() == MessageType.LOGIN) {
-                            session.logout();
+                            close(); session.logout();
                             UserProfile profile = authentication.login(data.get("username").getAsString(), password);
                             session.login(profile);
                             yield profile(id, "SIGNED_IN", profile);
@@ -115,8 +124,16 @@ final class RequestRouter {
                     attributes.add("profile", com.supplygo.protocol.BusinessProfileData.encode(result));
                     yield Response.ok(id, "BUSINESS_PROFILE", attributes);
                 }
+                case OPEN_CHAT -> {
+                    UserProfile actor = session.requireUser();
+                    if (chat == null) throw new AuthException("CHAT_UNAVAILABLE", "UDP chat is not configured");
+                    close();
+                    var grant = chat.issue(actor, peer, session.expiresAt()); chatTicket = grant.ticket();
+                    yield Response.ok(id, "CHAT_GRANT", grant.encode());
+                }
+                case CLOSE_CHAT -> { session.requireUser(); close(); yield Response.ok(id, "CHAT_CLOSED"); }
                 case GET_PROFILE -> profile(id, "PROFILE", session.requireUser());
-                case LOGOUT -> { session.logout(); yield Response.ok(id, "SIGNED_OUT"); }
+                case LOGOUT -> { close(); session.logout(); yield Response.ok(id, "SIGNED_OUT"); }
                 case ADMIN_STATS -> {
                     session.requireRole(Role.ADMIN);
                     JsonObject attributes = new JsonObject();
@@ -126,9 +143,12 @@ final class RequestRouter {
                 default -> throw new IllegalStateException("Unhandled request type");
             };
         } catch (AuthException exception) {
+            if (exception.code().equals("SESSION_EXPIRED") || exception.code().equals("AUTH_REQUIRED")) close();
             return Response.error(id, exception.code(), exception.getMessage());
         }
     }
+
+    @Override public void close() { if (chat != null) chat.revoke(chatTicket); chatTicket = null; }
 
     private static Response profile(String id, String message, UserProfile profile) {
         JsonObject attributes = new JsonObject();

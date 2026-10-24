@@ -113,6 +113,11 @@ public final class ProtocolCodec {
                 } catch (RuntimeException exception) { throw invalid(id, "Invalid business profile response"); }
                 return Response.ok(id, message, data);
             }
+            if (message.equals("CHAT_GRANT")) {
+                try { ChatCredentials.decode(data); }
+                catch (RuntimeException exception) { throw invalid(id, "Invalid chat grant"); }
+                return Response.ok(id, message, data);
+            }
             if (data.isEmpty()) return Response.ok(id, message);
             if (message.equals("PRODUCTS") || message.equals("BATCHES")) {
                 validateInventoryPage(data, message.equals("BATCHES"), id);
@@ -181,7 +186,7 @@ public final class ProtocolCodec {
         return json;
     }
 
-    private static JsonObject parse(String frame) throws ProtocolException {
+    static JsonObject parse(String frame) throws ProtocolException {
         try (JsonReader reader = new JsonReader(new StringReader(frame))) {
             reader.setStrictness(Strictness.STRICT);
             reader.setNestingLimit(16);

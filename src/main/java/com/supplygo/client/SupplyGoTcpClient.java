@@ -138,6 +138,19 @@ public final class SupplyGoTcpClient implements AutoCloseable {
         return BusinessProfileData.decode(reply.attributes().get("profile"));
     }
 
+    public synchronized ChatCredentials openChat() throws IOException {
+        if (!isSecure()) throw new IOException("Chat authorization requires TLS");
+        Response reply = exchange(Request.create(MessageType.OPEN_CHAT));
+        if (!reply.message().equals("CHAT_GRANT")) throw badReply();
+        return ChatCredentials.decode(reply.attributes());
+    }
+    public synchronized String closeChat() throws IOException { return message(Request.create(MessageType.CLOSE_CHAT), "CHAT_CLOSED"); }
+    public java.net.InetAddress chatAddress() throws IOException {
+        Socket socket = connection.get();
+        if (closed || socket == null || !socket.isConnected()) throw new IOException("TCP connection is closed");
+        return socket.getInetAddress();
+    }
+
     private UserProfile account(MessageType type, String username, char[] password, Role role, String expected) throws IOException {
         if (!isSecure()) throw new IOException("Account operations require TLS; no credentials were sent");
         JsonObject payload = new JsonObject();

@@ -24,6 +24,7 @@ public final class UserSession {
         }
         return profile;
     }
+    public Instant expiresAt() throws AuthException { requireUser(); return expires; }
     public UserProfile requireRole(Role role) throws AuthException {
         UserProfile user = requireUser();
         if (user.role() != role) throw new AuthException("FORBIDDEN", "This operation requires the " + role + " role");
