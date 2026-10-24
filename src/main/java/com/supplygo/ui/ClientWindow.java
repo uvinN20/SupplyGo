@@ -50,6 +50,7 @@ public final class ClientWindow extends JFrame {
     private final BusinessProfilePanel businessProfiles = new BusinessProfilePanel(this);
     private int nextOffset = -1;
     private final OrderPanel orders = new OrderPanel(this);
+    private final ChatPanel chat = new ChatPanel(this);
     private SupplyGoTcpClient client;
     private UserProfile profile;
     private String endpoint = "";
@@ -104,6 +105,7 @@ public final class ClientWindow extends JFrame {
         stock.add(new JScrollPane(inventoryTable), BorderLayout.CENTER);
         stock.add(inventoryStatus, BorderLayout.SOUTH); tabs.addTab("Inventory", stock);
         tabs.addTab("Orders", orders);
+        tabs.addTab("Chat", chat);
         body.add(tabs, BorderLayout.CENTER); content.add(body, BorderLayout.CENTER);
         content.add(new JLabel("Sign-in requires a TLS server and its trusted certificate. See docs/AUTHENTICATION.md."), BorderLayout.SOUTH);
         setContentPane(content);
@@ -132,6 +134,7 @@ public final class ClientWindow extends JFrame {
         setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override public void windowClosed(WindowEvent event) {
+                chat.dispose();
                 password.setText("");
                 if (client != null) client.close();
                 profile = null;
@@ -253,6 +256,7 @@ public final class ClientWindow extends JFrame {
     }
     private void updateControls() {
         businessProfiles.update(profile, busy);
+        chat.setContext(profile, busy);
         host.setEnabled(!busy && !connected); port.setEnabled(!busy && !connected); tls.setEnabled(!busy && !connected);
         connect.setEnabled(!busy && !connected); ping.setEnabled(!busy && connected); disconnect.setEnabled(!busy && connected);
         boolean anonymous = !busy && connected && client != null && client.isSecure() && profile == null;

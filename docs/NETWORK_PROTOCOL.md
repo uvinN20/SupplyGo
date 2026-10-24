@@ -1,7 +1,7 @@
 # SupplyGo TCP protocol, version 1
 
 PING and QUIT remain supported. TLS connections also support account operations
-described below. Business mutations, events, and UDP chat follow in later tasks.
+described below. Inventory, orders, business profiles and UDP chat are documented in this guide and the linked feature guides.
 
 ## Framing
 
@@ -82,14 +82,14 @@ Connection state is checked when performing an operation; there is no continuous
 heartbeat. Reconnect manually after idle closure, server restart, or a timeout.
 There is no automatic request retry, and the server stores no request-ID history.
 
-## Future boundaries
+## Transport boundaries
 
-TCP will carry accounts, inventory, orders, routes, and business events. The
-server must enforce validation, permissions, synchronization, and persistence.
-Before adding business mutations, define idempotency/duplicate-request handling
-and an event envelope. The plain PING/QUIT mode does not support accounts;
-account operations require TLS. UDP will be a separate messenger and will never
-change stock, orders, or financial records.
+TCP carries accounts, inventory, orders and business profiles. The server enforces
+validation, permissions, synchronization and persistence. Order submissions use
+persisted idempotency keys. Future routes and business events should retain these
+protections. The plain PING/QUIT mode does not support accounts; protected
+operations require TLS. UDP is a separate messenger and never changes stock,
+orders or financial records.
 
 ## TLS account operations
 
@@ -192,3 +192,7 @@ are documented in [ORDERS.md](ORDERS.md).
 ## Business profiles
 
 Authenticated TLS clients support GET_BUSINESS_PROFILE, UPDATE_BUSINESS_PROFILE, LIST_SUPPLIERS and LIST_SELLERS. See [BUSINESS_PROFILES.md](BUSINESS_PROFILES.md) for exact payloads, responses, validation, pagination and permissions.
+
+## UDP messenger
+
+OPEN_CHAT and CLOSE_CHAT authorize and revoke chat over authenticated TLS. Chat messages use signed, bounded UDP datagrams on the advertised UDP port. See [UDP_CHAT.md](UDP_CHAT.md) for packet schemas, grants, replay handling, limits and delivery semantics.

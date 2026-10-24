@@ -43,12 +43,15 @@ public final class ServerMain {
                 profiles = new com.supplygo.service.BusinessProfileService(profileRepository);
             }
             String bindAddress = System.getProperty("supplygo.server.bind", "127.0.0.1");
-            try (SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory, orders, profiles)) {
+            try (UdpChatServer chat = tlsEnabled ? new UdpChatServer(bindAddress, config.udpPort()) : null;
+                    SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory, orders, profiles, chat)) {
+                if (chat != null) chat.start();
                 AccountRepository store = repository;
                 var businessStore = profileRepository;
                 InventoryRepository stock = inventoryRepository;
                 shutdownHook = new Thread(() -> {
                     server.close();
+                    if (chat != null) chat.close();
                     if (businessStore != null) {
                         try { businessStore.close(); } catch (IOException exception) { System.err.println("Could not close business profiles"); }
                     }
@@ -61,7 +64,8 @@ public final class ServerMain {
                 }, "supplygo-shutdown");
                 Runtime.getRuntime().addShutdownHook(shutdownHook);
                 System.out.printf("SupplyGo TCP server listening on %s:%d (%s)%n", bindAddress, server.port(), tlsEnabled ? "TLS" : "PING/QUIT demo only");
-                System.out.println("Press Ctrl+C to stop. UDP is not started yet.");
+                if (chat != null) System.out.printf("SupplyGo UDP chat listening on %s:%d%n", bindAddress, chat.port());
+                System.out.println("Press Ctrl+C to stop.");
                 server.serve();
             }
         } catch (IOException | IllegalArgumentException | IllegalStateException exception) {

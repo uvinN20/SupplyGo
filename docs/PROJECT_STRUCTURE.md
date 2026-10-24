@@ -2,7 +2,7 @@
 
 The project uses one Maven build and separate server/client Java entry points.
 The current build implements TCP/TLS connectivity, accounts, inventory and
-order management and business profiles. Package documentation tracks the remaining planned areas.
+order management, business profiles and UDP messaging. Package documentation tracks the remaining planned areas.
 
 | Location | Responsibility | Current status |
 | --- | --- | --- |
@@ -11,6 +11,10 @@ order management and business profiles. Package documentation tracks the remaini
 | `client/ClientMain.java` | Swing application entry point | Implemented |
 | `ui/ClientWindow.java` | Connection, account and inventory controls | Implemented |
 | `ui/BusinessProfilePanel.java` | Business profile editor and manager directories | Implemented |
+| `ui/ChatPanel.java` | UDP room UI, bounded history and background heartbeats | Implemented |
+| `server/UdpChatServer.java` | Authenticated room, grants and datagram broadcast | Implemented |
+| `client/UdpChatClient.java` | UDP receiver, acknowledgements and socket lifecycle | Implemented |
+| `protocol/UdpChatProtocol.java` | Bounded signed datagrams and text validation | Implemented |
 | `ui/OrderPanel.java` | Seller and manager order screens | Implemented |
 | `config/NetworkConfig.java` | Immutable endpoint settings and validation | Implemented |
 | `client/SupplyGoTcpClient.java` | TCP socket, correlated requests and timeouts | Implemented |
@@ -49,7 +53,7 @@ requires them. Application inventory synchronization belongs in the services.
 
 ## Next milestone
 
-Supplier/seller ranking, routing, UDP messaging and optional
+Supplier/seller ranking, routing and optional
 OS simulations remain separate tasks. Database migration and production-specific
 workflows can follow when their requirements are defined. See
 [AUTHENTICATION.md](AUTHENTICATION.md), [INVENTORY.md](INVENTORY.md) and
@@ -76,3 +80,5 @@ workflows can follow when their requirements are defined. See
 ## Business profile module
 
 BusinessProfile is the validated data model; BusinessProfileRepository owns atomic JSON persistence and process locking; BusinessProfileService enforces ownership and directory permissions. BusinessProfileData handles wire records, and BusinessProfilePanel provides the Swing editor and manager directory. See [BUSINESS_PROFILES.md](BUSINESS_PROFILES.md).
+
+See [UDP_CHAT.md](UDP_CHAT.md) for the shared room and networking demonstration.
