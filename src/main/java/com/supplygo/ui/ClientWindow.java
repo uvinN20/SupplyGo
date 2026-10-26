@@ -52,6 +52,7 @@ public final class ClientWindow extends JFrame {
     private final OrderPanel orders = new OrderPanel(this);
     private final RoutePanel routes = new RoutePanel(this);
     private final ChatPanel chat = new ChatPanel(this);
+    private AppShell shell;
     private SupplyGoTcpClient client;
     private UserProfile profile;
     private String endpoint = "";
@@ -67,34 +68,27 @@ public final class ClientWindow extends JFrame {
         port.setName("tcpPort");
         tls.setName("useTls");
         username.setName("username"); password.setName("password"); signupRole.setName("signupRole");
+        identity.putClientProperty("html.disable", true);
         status.setName("connectionStatus"); identity.setName("identity"); log.setName("connectionLog");
 
-        JPanel content = new JPanel(new BorderLayout(0, 16));
-        content.setBackground(new Color(246, 248, 252));
-        content.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
-        JPanel heading = new JPanel(new GridLayout(0, 1, 0, 6)); heading.setOpaque(false);
-        JLabel title = new JLabel("SupplyGo"); title.setForeground(new Color(27, 76, 132));
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 30f));
-        heading.add(title); heading.add(new JLabel("Connect smarter. Deliver faster."));
-        content.add(heading, BorderLayout.NORTH);
-
-        JPanel body = new JPanel(new BorderLayout(0, 14)); body.setOpaque(false);
-        JPanel forms = new JPanel(); forms.setLayout(new BoxLayout(forms, BoxLayout.Y_AXIS));
-        forms.add(row(new JLabel("Server"), host, new JLabel("TCP port"), port, tls));
-        forms.add(row(connect, ping, disconnect, status));
-        JPanel accounts = new JPanel(); accounts.setLayout(new BoxLayout(accounts, BoxLayout.Y_AXIS));
-        accounts.setBorder(BorderFactory.createTitledBorder("Your account"));
-        accounts.add(row(new JLabel("Username"), username, new JLabel("Password"), password));
-        accounts.add(row(signIn, new JLabel("New account role"), signupRole, register));
-        accounts.add(row(identity, profileButton, signOut, adminStats));
-        accounts.add(row(new JLabel("Passwords: 12–128 characters. Administrator and manager accounts are created by the operator.")));
-        forms.add(accounts); body.add(forms, BorderLayout.NORTH);
+        JPanel connection = new JPanel(new GridLayout(0, 1, 0, 8));
+        connection.setOpaque(false);
+        connection.add(row(new JLabel("Server"), host, new JLabel("Port"), port));
+        connection.add(row(tls, connect, ping, disconnect));
+        JPanel accounts = new JPanel(new GridLayout(0, 1, 0, 8));
+        accounts.setOpaque(false);
+        accounts.add(new JLabel("Username")); accounts.add(username);
+        accounts.add(new JLabel("Password")); accounts.add(password);
+        accounts.add(signIn);
+        accounts.add(row(new JLabel("New account"), signupRole, register));
+        accounts.add(new JLabel("Use 12–128 characters for a new password."));
+        AppTheme.primary(signIn); AppTheme.primary(connect);
+        username.putClientProperty("JTextField.placeholderText", "Your username");
+        password.putClientProperty("JTextField.placeholderText", "Your account password");
         log.setEditable(false); log.setLineWrap(true); log.setWrapStyleWord(true);
-        JScrollPane scroll = new JScrollPane(log); scroll.setBorder(BorderFactory.createTitledBorder("Activity"));
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Activity", scroll);
-        tabs.addTab("Business profiles", businessProfiles);
-        JPanel stock = new JPanel(new BorderLayout(0, 6));
+        log.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        JScrollPane scroll = new JScrollPane(log);
+        JPanel stock = new JPanel(new BorderLayout(0, 14));
         stock.add(row(inventoryView, refreshInventory, nextInventory, createProduct, receiveBatch, withdrawStock), BorderLayout.NORTH);
         inventoryStatus.setName("inventoryStatus");
         inventoryTable.setName("inventoryTable"); inventoryView.setName("inventoryView");
@@ -102,15 +96,17 @@ public final class ClientWindow extends JFrame {
         stockRenderer.putClientProperty("html.disable", Boolean.TRUE);
         inventoryTable.setDefaultRenderer(Object.class, stockRenderer);
         inventoryTable.setFillsViewportHeight(true);
-        inventoryTable.setPreferredScrollableViewportSize(new Dimension(700, 150));
         stock.add(new JScrollPane(inventoryTable), BorderLayout.CENTER);
-        stock.add(inventoryStatus, BorderLayout.SOUTH); tabs.addTab("Inventory", stock);
-        tabs.addTab("Orders", orders);
-        tabs.addTab("Routes", routes);
-        tabs.addTab("Chat", chat);
-        body.add(tabs, BorderLayout.CENTER); content.add(body, BorderLayout.CENTER);
-        content.add(new JLabel("Sign-in requires a TLS server and its trusted certificate. See docs/AUTHENTICATION.md."), BorderLayout.SOUTH);
-        setContentPane(content);
+        stock.add(inventoryStatus, BorderLayout.SOUTH);
+        shell = new AppShell(connection, accounts, row(identity, profileButton, signOut, adminStats), status);
+        shell.addPage("Inventory", "Manage products, fruit batches and available stock.", stock);
+        shell.addPage("Orders", "Place orders and follow their progress.", orders);
+        shell.addPage("Business profiles", "Your business details and partner directory.", businessProfiles);
+        shell.addPage("Routes", "Find the shortest path through your saved road network.", routes);
+        shell.addPage("Chat", "Stay connected with your team using UDP messaging.", chat);
+        shell.addPage("Activity", "Connection events and operation results.", scroll);
+        setContentPane(shell);
+        getRootPane().setDefaultButton(connect);
 
         connect.addActionListener(event -> connect());
         ping.addActionListener(event -> perform("Sending PING…", client::ping, value -> append("Server: " + value)));
@@ -143,7 +139,7 @@ public final class ClientWindow extends JFrame {
             }
         });
         updateControls(); append("Start the server, choose its address and connection mode, then connect.");
-        pack(); setMinimumSize(new Dimension(getWidth(), getHeight())); setLocationRelativeTo(null);
+        setMinimumSize(new Dimension(980, 700)); setSize(1240, 820); setLocationRelativeTo(null);
     }
 
     public static JFrame create(NetworkConfig config) {
@@ -153,6 +149,7 @@ public final class ClientWindow extends JFrame {
     private static JButton button(String text, String name) { JButton button = new JButton(text); button.setName(name); return button; }
     private static JPanel row(Component... components) {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        panel.setOpaque(false);
         for (Component component : components) panel.add(component);
         return panel;
     }
@@ -275,9 +272,12 @@ public final class ClientWindow extends JFrame {
         createProduct.setEnabled(inventoryEnabled && writer); receiveBatch.setEnabled(inventoryEnabled && writer); withdrawStock.setEnabled(inventoryEnabled && writer);
         if (profile == null) clearInventory();
         orders.setContext(profile, busy);
+        shell.setSession(profile, busy);
+        getRootPane().setDefaultButton(profile == null ? (connected ? signIn : connect) : null);
         identity.setText(profile == null ? "Not signed in" : profile.username() + " • " + profile.role());
     }
     private void append(String message) {
+        if (shell != null) shell.showFeedback(message);
         log.append(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "  " + message + "\n");
         if (log.getLineCount() > 200) {
             try { log.replaceRange("", 0, log.getLineEndOffset(log.getLineCount() - 200)); }
