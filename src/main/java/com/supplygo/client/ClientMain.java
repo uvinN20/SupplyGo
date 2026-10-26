@@ -2,7 +2,6 @@ package com.supplygo.client;
 
 import java.awt.GraphicsEnvironment;
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 
 import com.supplygo.config.NetworkConfig;
 import com.supplygo.ui.ClientWindow;
@@ -29,11 +28,7 @@ public final class ClientMain {
         }
 
         SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception exception) {
-                System.err.println("Using default Swing appearance: " + exception.getMessage());
-            }
+            com.supplygo.ui.AppTheme.install();
             ClientWindow.create(config).setVisible(true);
         });
     }
