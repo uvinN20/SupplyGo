@@ -196,3 +196,7 @@ Authenticated TLS clients support GET_BUSINESS_PROFILE, UPDATE_BUSINESS_PROFILE,
 ## UDP messenger
 
 OPEN_CHAT and CLOSE_CHAT authorize and revoke chat over authenticated TLS. Chat messages use signed, bounded UDP datagrams on the advertised UDP port. See [UDP_CHAT.md](UDP_CHAT.md) for packet schemas, grants, replay handling, limits and delivery semantics.
+
+## Route operations
+
+See [ROUTING.md](ROUTING.md) for the Routes screen, permissions, persistence, Dijkstra algorithm and protocol.

@@ -25,7 +25,7 @@ order management, business profiles and UDP messaging. Package documentation tra
 | `protocol/` | Message types, requests, responses, JSON and framing | Implemented for connectivity, accounts, inventory, orders and profiles |
 | `model/` | Users, roles, products, fruit batches, orders and business profiles | Implemented |
 | `service/` | Authentication, sessions, inventory, orders and business profile permissions | Implemented |
-| `algorithm/` | Priority rankings and Dijkstra routing | Package reserved; FIFO is in shared stock operations |
+| `algorithm/` | Dijkstra shortest paths; priority rankings planned | Routing implemented; FIFO remains in shared stock operations |
 | `storage/` | Locked account, inventory/order and business profile stores | Implemented |
 | `security/` | Password hashing and JVM TLS context | Implemented |
 | `os/` | Separate scheduling, synchronization, memory, deadlock demos | Optional packages reserved |
@@ -53,7 +53,7 @@ requires them. Application inventory synchronization belongs in the services.
 
 ## Next milestone
 
-Supplier/seller ranking, routing and optional
+Supplier/seller ranking and optional
 OS simulations remain separate tasks. Database migration and production-specific
 workflows can follow when their requirements are defined. See
 [AUTHENTICATION.md](AUTHENTICATION.md), [INVENTORY.md](INVENTORY.md) and
@@ -82,3 +82,7 @@ workflows can follow when their requirements are defined. See
 BusinessProfile is the validated data model; BusinessProfileRepository owns atomic JSON persistence and process locking; BusinessProfileService enforces ownership and directory permissions. BusinessProfileData handles wire records, and BusinessProfilePanel provides the Swing editor and manager directory. See [BUSINESS_PROFILES.md](BUSINESS_PROFILES.md).
 
 See [UDP_CHAT.md](UDP_CHAT.md) for the shared room and networking demonstration.
+
+## Route module
+
+See [ROUTING.md](ROUTING.md) for the Routes screen, permissions, persistence, Dijkstra algorithm and protocol.

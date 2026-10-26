@@ -25,6 +25,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
     public static final int MAX_CLIENTS = 32;
     public static final int IDLE_TIMEOUT_MS = 60_000;
     private final ServerSocket listener;
+    private final com.supplygo.service.RouteService routes;
     private final UdpChatServer chat;
     private final ThreadPoolExecutor workers = new ThreadPoolExecutor(0, MAX_CLIENTS, 30, TimeUnit.SECONDS,
             new SynchronousQueue<>(), Thread.ofPlatform().name("supplygo-client-", 1).factory());
@@ -63,6 +64,11 @@ public final class SupplyGoTcpServer implements AutoCloseable {
 
     public SupplyGoTcpServer(String bindAddress, int port, SSLContext tls, AuthService authentication,
             InventoryService inventory, OrderService orders, com.supplygo.service.BusinessProfileService profiles, UdpChatServer chat) throws IOException {
+        this(bindAddress, port, tls, authentication, inventory, orders, profiles, chat, null);
+    }
+    public SupplyGoTcpServer(String bindAddress, int port, SSLContext tls, AuthService authentication, InventoryService inventory,
+            OrderService orders, com.supplygo.service.BusinessProfileService profiles, UdpChatServer chat, com.supplygo.service.RouteService routes) throws IOException {
+        this.routes = routes;
         this.chat = chat;
         this.businessProfiles = profiles;
         if (bindAddress == null || bindAddress.isBlank()) {
@@ -101,7 +107,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
                         clients.add(socket);
                         workers.execute(() -> {
                             try {
-                                new ClientHandler(socket, this.authentication, this.inventory, this.orders, this.businessProfiles, this.chat).run();
+                                new ClientHandler(socket, this.authentication, this.inventory, this.orders, this.businessProfiles, this.chat, this.routes).run();
                             } finally {
                                 synchronized (lifecycle) {
                                     clients.remove(socket);

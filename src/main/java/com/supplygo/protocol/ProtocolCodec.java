@@ -46,6 +46,10 @@ public final class ProtocolCodec {
         catch (IllegalArgumentException exception) { throw new ProtocolException("UNKNOWN_TYPE", id, "Unsupported message type"); }
         JsonObject payload = json.getAsJsonObject("payload");
         Set<String> keys = switch (type) {
+            case LIST_LOCATIONS, LIST_ROADS -> Set.of("offset");
+            case SAVE_LOCATION -> Set.of("locationId", "name");
+            case SAVE_ROAD -> Set.of("from", "to", "meters");
+            case FIND_ROUTE -> Set.of("from", "to");
             case UPDATE_BUSINESS_PROFILE -> Set.of("fullName", "businessName", "contactNumber", "location");
             case LIST_SUPPLIERS, LIST_SELLERS, LIST_PRODUCTS, LIST_BATCHES, LIST_ORDERS -> Set.of("offset");
             case CREATE_ORDER -> Set.of("clientOrderId", "productId", "quantity");
@@ -58,6 +62,7 @@ public final class ProtocolCodec {
         };
         if (!payload.keySet().equals(keys)) throw invalid(id, "Invalid payload fields for " + type);
         for (String key : keys) {
+            if (key.equals("meters")) { integer(payload, key, 1, 1_000_000_000, id); continue; }
             if (key.equals("orderId")) {
                 integer(payload, key, 1, Long.MAX_VALUE, id);
                 continue;
@@ -116,6 +121,11 @@ public final class ProtocolCodec {
             if (message.equals("CHAT_GRANT")) {
                 try { ChatCredentials.decode(data); }
                 catch (RuntimeException exception) { throw invalid(id, "Invalid chat grant"); }
+                return Response.ok(id, message, data);
+            }
+            if (Set.of("ROUTE", "ROUTE_LOCATIONS", "ROUTE_ROADS").contains(message)) {
+                try { RouteData.validate(data, message); }
+                catch (RuntimeException error) { throw invalid(id, "Invalid route response"); }
                 return Response.ok(id, message, data);
             }
             if (data.isEmpty()) return Response.ok(id, message);
@@ -186,7 +196,7 @@ public final class ProtocolCodec {
         return json;
     }
 
-    static JsonObject parse(String frame) throws ProtocolException {
+    public static JsonObject parse(String frame) throws ProtocolException {
         try (JsonReader reader = new JsonReader(new StringReader(frame))) {
             reader.setStrictness(Strictness.STRICT);
             reader.setNestingLimit(16);

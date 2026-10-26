@@ -24,6 +24,7 @@ final class RequestRouter implements AutoCloseable {
     private final InventoryService inventory;
     private final OrderService orders;
     private final com.supplygo.service.BusinessProfileService businessProfiles;
+    private final com.supplygo.service.RouteService routes;
     private final UdpChatServer chat;
     private final java.net.InetAddress peer;
     private String chatTicket;
@@ -36,6 +37,12 @@ final class RequestRouter implements AutoCloseable {
 
     RequestRouter(AuthService authentication, boolean secure, InventoryService inventory,
             OrderService orders, com.supplygo.service.BusinessProfileService profiles, UdpChatServer chat, java.net.InetAddress peer) {
+        this(authentication, secure, inventory, orders, profiles, chat, peer, null);
+    }
+    RequestRouter(AuthService authentication, boolean secure, InventoryService inventory, OrderService orders,
+            com.supplygo.service.BusinessProfileService profiles, UdpChatServer chat, java.net.InetAddress peer,
+            com.supplygo.service.RouteService routes) {
+        this.routes = routes;
         this.chat = chat; this.peer = peer;
         this.authentication = authentication;
         this.secure = secure;
@@ -132,6 +139,20 @@ final class RequestRouter implements AutoCloseable {
                     yield Response.ok(id, "CHAT_GRANT", grant.encode());
                 }
                 case CLOSE_CHAT -> { session.requireUser(); close(); yield Response.ok(id, "CHAT_CLOSED"); }
+                case LIST_LOCATIONS, LIST_ROADS, SAVE_LOCATION, SAVE_ROAD, FIND_ROUTE -> {
+                    UserProfile actor = session.requireUser();
+                    if (routes == null) throw new AuthException("ROUTES_UNAVAILABLE", "Routing is not configured");
+                    JsonObject data = request.payload();
+                    if (request.type() == MessageType.LIST_LOCATIONS || request.type() == MessageType.LIST_ROADS) {
+                        boolean roads = request.type() == MessageType.LIST_ROADS;
+                        yield Response.ok(id, roads ? "ROUTE_ROADS" : "ROUTE_LOCATIONS", routes.page(actor, roads, data.get("offset").getAsInt()));
+                    }
+                    if (request.type() == MessageType.FIND_ROUTE)
+                        yield Response.ok(id, "ROUTE", com.supplygo.protocol.RouteData.encode(routes.find(actor, data.get("from").getAsString(), data.get("to").getAsString())));
+                    if (request.type() == MessageType.SAVE_LOCATION) routes.location(actor, data.get("locationId").getAsString(), data.get("name").getAsString());
+                    else routes.road(actor, data.get("from").getAsString(), data.get("to").getAsString(), data.get("meters").getAsLong());
+                    yield Response.ok(id, "ROAD_NETWORK_UPDATED");
+                }
                 case GET_PROFILE -> profile(id, "PROFILE", session.requireUser());
                 case LOGOUT -> { close(); session.logout(); yield Response.ok(id, "SIGNED_OUT"); }
                 case ADMIN_STATS -> {

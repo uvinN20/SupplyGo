@@ -30,6 +30,7 @@ class AuthIntegrationTest {
     com.supplygo.storage.InventoryRepository inventory;
     com.supplygo.storage.BusinessProfileRepository businessProfiles;
     com.supplygo.server.UdpChatServer chat;
+    com.supplygo.storage.RouteRepository routeStore;
     SupplyGoTcpServer server;
     Thread accept;
     AtomicReference<Throwable> failure = new AtomicReference<>();
@@ -55,14 +56,30 @@ class AuthIntegrationTest {
         inventory = new com.supplygo.storage.InventoryRepository(data);
         businessProfiles = new com.supplygo.storage.BusinessProfileRepository(data);
         chat = new com.supplygo.server.UdpChatServer("127.0.0.1", 0); chat.start();
-        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication, new com.supplygo.service.InventoryService(inventory), new com.supplygo.service.OrderService(inventory), new com.supplygo.service.BusinessProfileService(businessProfiles), chat);
+        routeStore = new com.supplygo.storage.RouteRepository(data);
+        server = new SupplyGoTcpServer("127.0.0.1", 0, serverContext, authentication, new com.supplygo.service.InventoryService(inventory), new com.supplygo.service.OrderService(inventory), new com.supplygo.service.BusinessProfileService(businessProfiles), chat, new com.supplygo.service.RouteService(routeStore));
         accept = Thread.ofPlatform().start(() -> { try { server.serve(); } catch (Throwable e) { failure.set(e); } });
     }
     @AfterEach void stop() throws Exception {
         server.close(); accept.join(3000); assertFalse(accept.isAlive());
-        assertNull(failure.get()); chat.close(); repository.close(); inventory.close(); businessProfiles.close();
+        assertNull(failure.get()); chat.close(); routeStore.close(); repository.close(); inventory.close(); businessProfiles.close();
     }
     SupplyGoTcpClient client() { return new SupplyGoTcpClient("localhost", server.port(), clientContext); }
+
+    @Test void routingOverTlsEnforcesPermissionsAndSurvivesRestart() throws Exception {
+        authentication.provision("admin",PASSWORD.toCharArray(),Role.ADMIN);authentication.provision("seller",PASSWORD.toCharArray(),Role.SELLER);
+        try(var manager=client();var reader=client()) {
+            manager.connect();reader.connect();assertEquals("AUTH_REQUIRED",assertThrows(ServerRejectedException.class,()->reader.findRoute("A","B")).code());
+            manager.login("admin",PASSWORD.toCharArray());reader.login("seller",PASSWORD.toCharArray());
+            manager.saveLocation("A","Matara");manager.saveLocation("B","Weligama");manager.saveLocation("C","Galle");manager.saveLocation("D","Disconnected");
+            manager.saveRoad("A","C",50000);manager.saveRoad("A","B",20000);manager.saveRoad("B","C",25000);
+            assertEquals(45000,reader.findRoute("A","C").get("meters").getAsLong());assertEquals(3,reader.findRoute("A","C").getAsJsonArray("path").size());
+            assertEquals("FORBIDDEN",assertThrows(ServerRejectedException.class,()->reader.saveRoad("A","C",1)).code());
+            assertEquals("ROUTE_NOT_FOUND",assertThrows(ServerRejectedException.class,()->reader.findRoute("A","D")).code());assertEquals("PONG",reader.ping());
+            assertEquals(4,reader.roadNetworkPage(false,0).getAsJsonArray("locations").size());
+        }
+        stop();start();try(var reader=client()){reader.connect();reader.login("seller",PASSWORD.toCharArray());assertEquals(45000,reader.findRoute("C","A").get("meters").getAsLong());reader.logout();assertThrows(ServerRejectedException.class,()->reader.findRoute("A","C"));}
+    }
 
     @Test void chatAuthorizationRequiresLoginAndRevokesOnLogoutReplacementAndDisconnect() throws Exception {
         authentication.provision("seller", PASSWORD.toCharArray(), Role.SELLER);
@@ -243,9 +260,9 @@ class AuthIntegrationTest {
             Thread thread = Thread.ofPlatform().start(() -> { try { plain.serve(); } catch (IOException e) { failure.set(e); } });
             try (var socket = new java.net.Socket("127.0.0.1", plain.port())) {
                 socket.setSoTimeout(5000);
-                for (MessageType type : new MessageType[]{MessageType.OPEN_CHAT, MessageType.CLOSE_CHAT, MessageType.GET_BUSINESS_PROFILE, MessageType.UPDATE_BUSINESS_PROFILE, MessageType.LIST_SUPPLIERS, MessageType.LIST_SELLERS}) {
+                for (MessageType type : new MessageType[]{MessageType.LIST_LOCATIONS, MessageType.LIST_ROADS, MessageType.OPEN_CHAT, MessageType.CLOSE_CHAT, MessageType.GET_BUSINESS_PROFILE, MessageType.UPDATE_BUSINESS_PROFILE, MessageType.LIST_SUPPLIERS, MessageType.LIST_SELLERS}) {
                     JsonObject payload = new JsonObject();
-                    if (type == MessageType.LIST_SUPPLIERS || type == MessageType.LIST_SELLERS) payload.addProperty("offset", 0);
+                    if (type == MessageType.LIST_SUPPLIERS || type == MessageType.LIST_SELLERS || type == MessageType.LIST_LOCATIONS || type == MessageType.LIST_ROADS) payload.addProperty("offset", 0);
                     if (type == MessageType.UPDATE_BUSINESS_PROFILE) {
                         payload.addProperty("fullName", "Name"); payload.addProperty("businessName", "Shop"); payload.addProperty("contactNumber", "0771234567"); payload.addProperty("location", "Town");
                     }
