@@ -19,6 +19,7 @@ public final class ServerMain {
     public static void main(String[] args) {
         Thread shutdownHook = null;
         AccountRepository repository = null;
+        com.supplygo.storage.RouteRepository routeRepository = null;
         InventoryRepository inventoryRepository = null;
         com.supplygo.storage.BusinessProfileRepository profileRepository = null;
         try {
@@ -28,6 +29,7 @@ public final class ServerMain {
             AuthService authentication = null;
             InventoryService inventory = null;
             OrderService orders = null;
+            com.supplygo.service.RouteService routes = null;
             com.supplygo.service.BusinessProfileService profiles = null;
             if (tlsEnabled) {
                 if (System.getProperty("javax.net.ssl.keyStore", "").isBlank()) {
@@ -36,6 +38,8 @@ public final class ServerMain {
                 tls = TlsSupport.defaultContext();
                 repository = new AccountRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
                 authentication = new AuthService(repository);
+                routeRepository = new com.supplygo.storage.RouteRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
+                routes = new com.supplygo.service.RouteService(routeRepository);
                 inventoryRepository = new InventoryRepository(Path.of(System.getProperty("supplygo.data.dir", "data")));
                 inventory = new InventoryService(inventoryRepository);
                 orders = new OrderService(inventoryRepository);
@@ -44,13 +48,15 @@ public final class ServerMain {
             }
             String bindAddress = System.getProperty("supplygo.server.bind", "127.0.0.1");
             try (UdpChatServer chat = tlsEnabled ? new UdpChatServer(bindAddress, config.udpPort()) : null;
-                    SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory, orders, profiles, chat)) {
+                    SupplyGoTcpServer server = new SupplyGoTcpServer(bindAddress, config.tcpPort(), tls, authentication, inventory, orders, profiles, chat, routes)) {
                 if (chat != null) chat.start();
                 AccountRepository store = repository;
                 var businessStore = profileRepository;
+                var routeStore = routeRepository;
                 InventoryRepository stock = inventoryRepository;
                 shutdownHook = new Thread(() -> {
                     server.close();
+                    if (routeStore != null) { try { routeStore.close(); } catch (IOException error) { System.err.println("Could not close route store"); } }
                     if (chat != null) chat.close();
                     if (businessStore != null) {
                         try { businessStore.close(); } catch (IOException exception) { System.err.println("Could not close business profiles"); }
@@ -76,6 +82,7 @@ public final class ServerMain {
                 try { Runtime.getRuntime().removeShutdownHook(shutdownHook); }
                 catch (IllegalStateException ignored) { /* Shutdown hook owns cleanup. */ }
             }
+            if (routeRepository != null) { try { routeRepository.close(); } catch (IOException error) { System.err.println("Could not close route store"); } }
             if (profileRepository != null) {
                 try { profileRepository.close(); } catch (IOException exception) { System.err.println("Could not close business profiles"); }
             }

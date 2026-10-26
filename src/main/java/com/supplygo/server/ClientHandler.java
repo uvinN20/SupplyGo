@@ -21,6 +21,7 @@ import com.supplygo.service.OrderService;
 /** One handler owns each accepted connection and processes its requests in order. */
 public final class ClientHandler implements Runnable {
     private final Socket socket;
+    private final com.supplygo.service.RouteService routes;
     private final UdpChatServer chat;
     private final AuthService authentication;
     private final InventoryService inventory;
@@ -51,6 +52,11 @@ public final class ClientHandler implements Runnable {
 
     public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory, OrderService orders,
             com.supplygo.service.BusinessProfileService businessProfiles, UdpChatServer chat) {
+        this(socket, authentication, inventory, orders, businessProfiles, chat, null);
+    }
+    public ClientHandler(Socket socket, AuthService authentication, InventoryService inventory, OrderService orders,
+            com.supplygo.service.BusinessProfileService businessProfiles, UdpChatServer chat, com.supplygo.service.RouteService routes) {
+        this.routes = routes;
         this.chat = chat;
         this.businessProfiles = businessProfiles;
         this.orders = orders;
@@ -61,7 +67,7 @@ public final class ClientHandler implements Runnable {
 
     @Override
     public void run() {
-        try (RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, orders, businessProfiles, chat, socket.getInetAddress());
+        try (RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, orders, businessProfiles, chat, socket.getInetAddress(), routes);
                 socket;
                 var input = new BufferedInputStream(socket.getInputStream());
                 var output = new BufferedOutputStream(socket.getOutputStream())) {

@@ -151,6 +151,24 @@ public final class SupplyGoTcpClient implements AutoCloseable {
         return socket.getInetAddress();
     }
 
+    public synchronized JsonObject roadNetworkPage(boolean roads, int offset) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("offset", offset);
+        Response response = exchange(Request.create(roads ? MessageType.LIST_ROADS : MessageType.LIST_LOCATIONS, payload));
+        if (!response.message().equals(roads ? "ROUTE_ROADS" : "ROUTE_LOCATIONS")) throw badReply(); return response.attributes();
+    }
+    public synchronized String saveLocation(String id, String name) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("locationId", id); payload.addProperty("name", name);
+        return message(Request.create(MessageType.SAVE_LOCATION, payload), "ROAD_NETWORK_UPDATED");
+    }
+    public synchronized String saveRoad(String from, String to, long meters) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("from", from); payload.addProperty("to", to); payload.addProperty("meters", meters);
+        return message(Request.create(MessageType.SAVE_ROAD, payload), "ROAD_NETWORK_UPDATED");
+    }
+    public synchronized JsonObject findRoute(String from, String to) throws IOException {
+        JsonObject payload = new JsonObject(); payload.addProperty("from", from); payload.addProperty("to", to);
+        Response response = exchange(Request.create(MessageType.FIND_ROUTE, payload)); if (!response.message().equals("ROUTE")) throw badReply(); return response.attributes();
+    }
+
     private UserProfile account(MessageType type, String username, char[] password, Role role, String expected) throws IOException {
         if (!isSecure()) throw new IOException("Account operations require TLS; no credentials were sent");
         JsonObject payload = new JsonObject();
