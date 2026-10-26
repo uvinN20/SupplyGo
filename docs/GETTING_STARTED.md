@@ -154,3 +154,7 @@ data, read the migration and backup instructions in [ORDERS.md](ORDERS.md).
 For supplier/seller profiles and manager directories, see [Business profiles](BUSINESS_PROFILES.md).
 
 For the shared room, LAN setup and UDP delivery behavior, see [UDP_CHAT.md](UDP_CHAT.md).
+
+## Route planning
+
+See [ROUTING.md](ROUTING.md) for the Routes screen, permissions, persistence, Dijkstra algorithm and protocol.
