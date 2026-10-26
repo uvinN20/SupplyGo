@@ -2,8 +2,9 @@ package com.supplygo.protocol;
 
 import com.google.gson.JsonObject;
 
-/** Public reply data never includes credentials or password hashes. */
+/** Reply data may include short-lived chat credentials over TLS; diagnostic output is redacted. */
 public record Response(String requestId, Status status, String message, String errorCode, JsonObject attributes) {
+    @Override public String toString() { return "Response[id=" + requestId + ", status=" + status + ", message=" + message + ", attributes=redacted]"; }
     public enum Status { OK, ERROR }
     public Response { attributes = attributes.deepCopy(); }
     public Response(String id, Status status, String message, String code) { this(id, status, message, code, new JsonObject()); }
