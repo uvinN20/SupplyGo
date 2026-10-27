@@ -7,6 +7,12 @@ import java.security.KeyStore;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import javax.net.ssl.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -17,6 +23,7 @@ import com.supplygo.protocol.*;
 import com.supplygo.server.SupplyGoTcpServer;
 import com.supplygo.service.AuthService;
 import com.supplygo.storage.AccountRepository;
+import com.supplygo.web.WebGatewayServer;
 
 @Timeout(30)
 class AuthIntegrationTest {
@@ -32,6 +39,7 @@ class AuthIntegrationTest {
     com.supplygo.server.UdpChatServer chat;
     com.supplygo.storage.RouteRepository routeStore;
     SupplyGoTcpServer server;
+    WebGatewayServer gateway;
     Thread accept;
     AtomicReference<Throwable> failure = new AtomicReference<>();
 
@@ -61,10 +69,46 @@ class AuthIntegrationTest {
         accept = Thread.ofPlatform().start(() -> { try { server.serve(); } catch (Throwable e) { failure.set(e); } });
     }
     @AfterEach void stop() throws Exception {
+        if (gateway != null) { gateway.close(); gateway = null; }
         server.close(); accept.join(3000); assertFalse(accept.isAlive());
         assertNull(failure.get()); chat.close(); routeStore.close(); repository.close(); inventory.close(); businessProfiles.close();
     }
     SupplyGoTcpClient client() { return new SupplyGoTcpClient("localhost", server.port(), clientContext); }
+
+    @Test void webGatewayRequiresCsrfHeaderAndUsesHttpOnlySessionCookie() throws Exception {
+        authentication.provision("seller", PASSWORD.toCharArray(), Role.SELLER);
+        gateway = new WebGatewayServer("127.0.0.1", 0, "localhost", server.port(), clientContext, false);
+        gateway.start();
+        CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+        HttpClient browser = HttpClient.newBuilder().cookieHandler(cookies).build();
+        URI endpoint = URI.create("http://127.0.0.1:" + gateway.port() + "/api/session");
+        HttpResponse<String> missingCsrf = browser.send(HttpRequest.newBuilder(endpoint)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"username\":\"seller\",\"password\":\"" + PASSWORD + "\"}"))
+                .build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, missingCsrf.statusCode());
+
+        HttpResponse<String> login = browser.send(HttpRequest.newBuilder(endpoint)
+                .header("Content-Type", "application/json").header(WebGatewayServer.CSRF_HEADER, "1")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"username\":\"seller\",\"password\":\"" + PASSWORD + "\"}"))
+                .build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, login.statusCode());
+        assertTrue(login.body().contains("\"role\":\"SELLER\""));
+        String setCookie = login.headers().firstValue("Set-Cookie").orElseThrow();
+        assertTrue(setCookie.contains("HttpOnly"));
+        assertTrue(setCookie.contains("SameSite=Strict"));
+        assertFalse(setCookie.contains("; Secure"));
+
+        assertEquals(1, cookies.getCookieStore().getCookies().size(), cookies.getCookieStore().getCookies().toString());
+        assertEquals(1, cookies.getCookieStore().get(endpoint).size(), cookies.getCookieStore().get(endpoint).toString());
+        HttpResponse<String> restored = browser.send(HttpRequest.newBuilder(endpoint).GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, restored.statusCode(), restored.body());
+        assertTrue(restored.body().contains("seller"));
+        HttpResponse<String> logout = browser.send(HttpRequest.newBuilder(endpoint)
+                .header(WebGatewayServer.CSRF_HEADER, "1").DELETE().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, logout.statusCode());
+        assertEquals(401, browser.send(HttpRequest.newBuilder(endpoint).GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
 
     @Test void routingOverTlsEnforcesPermissionsAndSurvivesRestart() throws Exception {
         authentication.provision("admin",PASSWORD.toCharArray(),Role.ADMIN);authentication.provision("seller",PASSWORD.toCharArray(),Role.SELLER);

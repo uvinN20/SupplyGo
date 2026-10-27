@@ -158,3 +158,20 @@ For the shared room, LAN setup and UDP delivery behavior, see [UDP_CHAT.md](UDP_
 ## Route planning
 
 See [ROUTING.md](ROUTING.md) for the Routes screen, permissions, persistence, Dijkstra algorithm and protocol.
+
+## Browser sign-in preview
+
+The React web preview now authenticates accounts through the Java TLS server. Start the TCP server, start the Java web gateway, and then start Vite in three terminals. Keep the gateway and Vite on the same computer for this development setup:
+
+```powershell
+# Terminal 1: start the TLS TCP server using the keystore/truststore settings in AUTHENTICATION.md
+java -Dsupplygo.tls=true -Djavax.net.ssl.keyStore=certs/server.p12 -Djavax.net.ssl.keyStorePassword=YOUR_SERVER_STORE_PASSWORD -jar target/supplygo-0.1.0-SNAPSHOT.jar server
+
+# Terminal 2: web gateway verifies the TCP server certificate using its truststore
+java -Dsupplygo.tls=true -Djavax.net.ssl.trustStore=certs/trust.p12 -Djavax.net.ssl.trustStorePassword=YOUR_CLIENT_STORE_PASSWORD -Dsupplygo.server.host=localhost -jar target/supplygo-0.1.0-SNAPSHOT.jar web
+
+# Terminal 3, from frontend/: Vite proxies /api to the local gateway
+npm run dev
+```
+
+Open the URL printed by Vite. Create a supplier or seller account, or sign in with an account already provisioned on the Java server. The browser session uses an HttpOnly cookie. The current dashboard, inventory and orders remain clearly marked sample data; edits do not change server records. See [WEB_GATEWAY.md](WEB_GATEWAY.md) for configuration and deployment notes.
