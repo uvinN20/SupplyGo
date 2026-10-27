@@ -5,6 +5,15 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 import { initialProducts, metrics, filterProducts } from "./lib/demo";
+
+const api = vi.hoisted(() => ({
+    currentSession: vi.fn(),
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    createAccount: vi.fn(),
+}));
+vi.mock("./lib/api", () => api);
+
 beforeAll(() => {
     window.scrollTo = vi.fn();
     HTMLDialogElement.prototype.showModal = function () {
@@ -14,28 +23,51 @@ beforeAll(() => {
         this.removeAttribute("open");
     };
 });
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+});
 async function enter(role = "Admin") {
+    api.currentSession.mockResolvedValue(null);
+    api.signIn.mockResolvedValue({ username: role.toLowerCase(), role });
+    api.signOut.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<App />);
-    await user.selectOptions(screen.getByLabelText("Explore as"), role);
-    await user.click(
-        screen.getByRole("button", { name: /Explore your workspace/ }),
+    const username = await screen.findByLabelText("Username");
+    await user.type(username, role.toLowerCase());
+    await user.type(
+        screen.getByLabelText("Password"),
+        "a strong test password",
     );
+    await user.click(screen.getByRole("button", { name: /Sign in/ }));
+    await screen.findByRole("heading", { name: /Your day, at a glance/ });
     return user;
 }
-describe("Preview workflows", () => {
-    it("opens without a password or backend and clearly identifies sample data", async () => {
+describe("Authenticated web preview", () => {
+    it("restores the server session and clearly identifies sample workspace data", async () => {
+        api.currentSession.mockResolvedValue({
+            username: "yasiru",
+            role: "Admin",
+        });
+        render(<App />);
+        expect(await screen.findByText("yasiru")).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /Workspace content and actions below are sample data/,
+            ),
+        ).toBeInTheDocument();
+    });
+    it("signs in through the API and signs out of the server session", async () => {
         const user = await enter();
+        expect(api.signIn).toHaveBeenCalledWith(
+            "admin",
+            "a strong test password",
+        );
+        expect(screen.getByText(/sample data/)).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Sign out" }));
+        expect(api.signOut).toHaveBeenCalledOnce();
         expect(
-            screen.getByRole("heading", { name: /Your day, at a glance/ }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText(/Not connected to the Java backend/),
-        ).toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: "Leave preview" }));
-        expect(
-            screen.getByRole("button", { name: /Explore your workspace/ }),
+            await screen.findByRole("button", { name: /Sign in/ }),
         ).toBeInTheDocument();
     });
     it("searches every sample record rather than only the current page", async () => {
@@ -61,57 +93,37 @@ describe("Preview workflows", () => {
         expect(screen.getByText("FR-008")).toBeInTheDocument();
         expect(screen.getByText("Page 1 of 1")).toBeInTheDocument();
     });
-    it("rejects duplicate IDs, adds a sample product and resets it on exit", async () => {
-        const user = await enter();
-        await user.click(screen.getByRole("button", { name: "Inventory" }));
+    it("creates a seller account through the API and prompts the new user to sign in", async () => {
+        api.currentSession.mockResolvedValue(null);
+        api.createAccount.mockResolvedValue({
+            username: "newshop",
+            role: "SELLER",
+        });
+        render(<App />);
+        const user = userEvent.setup();
         await user.click(
-            screen.getByRole("button", {
-                name: "Add sample product",
-            }),
+            await screen.findByRole("button", { name: /Create an account/ }),
         );
-        await user.type(screen.getByLabelText("Product ID"), "FR-001");
-        await user.type(screen.getByLabelText("Product name"), "Papaya");
-        await user.click(
-            screen
-                .getAllByRole("button", {
-                    name: "Add sample product",
-                })
-                .at(-1)!,
-        );
-        expect(screen.getByRole("alert")).toHaveTextContent("already exists");
-        await user.clear(screen.getByLabelText("Product ID"));
-        await user.type(screen.getByLabelText("Product ID"), "FR-009");
-        await user.click(
-            screen
-                .getAllByRole("button", {
-                    name: "Add sample product",
-                })
-                .at(-1)!,
-        );
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        expect(screen.getByText("Papaya")).toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: "Leave preview" }));
-        await user.click(
-            screen.getByRole("button", { name: /Explore your workspace/ }),
-        );
-        await user.click(screen.getByRole("button", { name: "Inventory" }));
+        await user.type(screen.getByLabelText("Username"), "newshop");
         await user.type(
-            screen.getByRole("textbox", { name: "Search inventory" }),
-            "Papaya",
+            screen.getByLabelText("Password"),
+            "a strong new password",
         );
-        expect(screen.getByText("No matching products")).toBeInTheDocument();
-    });
-    it("shows seller browsing without sample inventory editing", async () => {
-        const user = await enter("Seller");
-        await user.click(screen.getByRole("button", { name: "Inventory" }));
-        expect(
-            screen.queryByRole("button", {
-                name: "Add sample product",
-            }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.getByText(/Seller preview: inventory browsing only/),
-        ).toBeInTheDocument();
+        await user.selectOptions(
+            screen.getByLabelText("Account type"),
+            "SELLER",
+        );
+        await user.click(
+            screen.getByRole("button", { name: /Create account/ }),
+        );
+        expect(api.createAccount).toHaveBeenCalledWith(
+            "newshop",
+            "a strong new password",
+            "SELLER",
+        );
+        expect(await screen.findByRole("status")).toHaveTextContent(
+            "Account created",
+        );
     });
     it("filters sample orders and explains planned destinations", async () => {
         const user = await enter();
@@ -126,8 +138,7 @@ describe("Preview workflows", () => {
         expect(screen.getByText("Phase 8 · Planned")).toBeInTheDocument();
     });
     it("calculates honest totals and combines category/status/search filters", () => {
-        const m = metrics(initialProducts);
-        expect(m).toEqual({
+        expect(metrics(initialProducts)).toEqual({
             products: 8,
             available: 1211,
             reserved: 210,
