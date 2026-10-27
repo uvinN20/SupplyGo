@@ -28,3 +28,7 @@ Production build/type checking and six component/data tests are run before the P
 5. Integrate route planning and the chat bridge.
 6. Integrate reviewed ranking work and coursework simulations.
 7. Complete browser tests, accessibility checks, setup automation and demonstration documentation.
+
+## Visual direction
+
+SupplyGo uses an Apple-inspired liquid-glass interface: translucent frosted surfaces, layered pastel colour, pill-shaped controls and gentle motion. This is a visual design direction and does not imply Apple affiliation. Honour reduced-motion preferences and keep contrast and readable labels clear.
