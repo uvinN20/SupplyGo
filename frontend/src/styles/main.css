@@ -1821,3 +1821,44 @@ select {
         transition: none;
     }
 }
+
+
+/* Secure web sign-in and session feedback */
+.auth-error,
+.auth-notice {
+    border-radius: 14px;
+    padding: 11px 14px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.auth-error {
+    color: #a53242;
+    background: rgba(255, 237, 240, 0.82);
+    border: 1px solid rgba(232, 158, 170, 0.55);
+}
+.auth-notice {
+    color: #21694d;
+    background: rgba(232, 249, 240, 0.86);
+    border: 1px solid rgba(143, 209, 174, 0.5);
+}
+.auth-switch {
+    width: 100%;
+    margin-top: 15px;
+    border: 0;
+    background: transparent;
+    color: #5773aa;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.auth-switch:disabled { opacity: 0.55; cursor: wait; }
+.password-hint { margin: 1px 0 12px; font-size: 11px; }
+.session-loading {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    color: #365c55;
+    background: radial-gradient(ellipse at 20% 15%, #f0f8f4, transparent 38%), linear-gradient(135deg, #f5f8fb, #e8f0f5);
+    font-size: 14px;
+}
+.sidebar-error { margin: 8px 12px; font-size: 10px; }
