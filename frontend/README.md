@@ -1,6 +1,6 @@
 # SupplyGo web preview — Phase 1
 
-A React + TypeScript + Vite + Tailwind browser interface for reviewing SupplyGo's new visual direction. This preview uses local sample data. It does **not** authenticate users or call the Java server, TCP service, UDP chat or production repositories.
+A React + TypeScript + Vite browser interface for reviewing SupplyGo's new visual direction. This preview uses local sample data. It does **not** authenticate users or call the Java server, TCP service, UDP chat or production repositories.
 
 ## Start on Windows
 
