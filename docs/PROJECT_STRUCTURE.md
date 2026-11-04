@@ -25,13 +25,13 @@ order management, business profiles and UDP messaging. Package documentation tra
 | `protocol/` | Message types, requests, responses, JSON and framing | Implemented for connectivity, accounts, inventory, orders and profiles |
 | `model/` | Users, roles, products, fruit batches, orders and business profiles | Implemented |
 | `service/` | Authentication, sessions, inventory, orders and business profile permissions | Implemented |
-| `algorithm/` | Dijkstra shortest paths; priority rankings planned | Routing implemented; FIFO remains in shared stock operations |
+| `algorithm/` | Dijkstra shortest paths and supplier/seller ranking foundation | Routing and offline ranking algorithms implemented; FIFO remains in shared stock operations |
 | `storage/` | Locked account, inventory/order and business profile stores | Implemented |
 | `security/` | Password hashing and JVM TLS context | Implemented |
 | `os/` | Separate scheduling, synchronization, memory, deadlock demos | Optional packages reserved |
 | `src/main/resources/` | Packaged configuration defaults | Implemented |
 | `src/test/java/com/supplygo/config/` | Configuration regression tests | Implemented |
-| `src/test/java/com/supplygo/algorithm/` | Algorithm tests | Directory reserved |
+| `src/test/java/com/supplygo/algorithm/` | Algorithm tests | Route and ranking tests implemented |
 | `src/test/java/com/supplygo/service/` | Business-rule, persistence and concurrency tests | Implemented |
 | `src/test/java/com/supplygo/network/` | Real TCP/TLS socket integration tests | Implemented |
 | `src/test/java/com/supplygo/protocol/` | JSON and framing validation | Implemented |
@@ -53,9 +53,11 @@ requires them. Application inventory synchronization belongs in the services.
 
 ## Next milestone
 
-Supplier/seller ranking and optional
-OS simulations remain separate tasks. Database migration and production-specific
-workflows can follow when their requirements are defined. See
+Supplier/seller ranking now has an offline algorithm foundation; production
+integration and optional OS simulations remain separate tasks. Database
+migration and production-specific workflows can follow when their requirements
+are defined. See [RANKING.md](RANKING.md) for ranking policy, limitations and
+complexity. See
 [AUTHENTICATION.md](AUTHENTICATION.md), [INVENTORY.md](INVENTORY.md) and
 [ORDERS.md](ORDERS.md) and [BUSINESS_PROFILES.md](BUSINESS_PROFILES.md) for the implemented workflows.
 
