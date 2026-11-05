@@ -19,3 +19,7 @@ Thumbs.db
 *.p12
 *.jks
 *.key
+
+/frontend/node_modules/
+/frontend/dist/
+/frontend/coverage/
