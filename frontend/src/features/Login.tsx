@@ -2,17 +2,48 @@ import { useState, type FormEvent } from "react";
 import { ArrowRight, ShieldCheck, Sparkles, Truck } from "lucide-react";
 import Brand from "../components/Brand";
 import SupplyIllustration from "../components/SupplyIllustration";
-import { roles, type Role } from "../lib/demo";
 export default function Login({
-    onEnter,
+    onLogin,
+    onRegister,
 }: {
-    onEnter: (name: string, role: Role) => void;
+    onLogin: (username: string, password: string) => Promise<void>;
+    onRegister: (
+        username: string,
+        password: string,
+        role: "SUPPLIER" | "SELLER",
+    ) => Promise<void>;
 }) {
-    const [name, setName] = useState("Uvin");
-    const [role, setRole] = useState<Role>("Admin");
-    function enter(e: FormEvent) {
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [registering, setRegistering] = useState(false);
+    const [role, setRole] = useState<"SUPPLIER" | "SELLER">("SELLER");
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    async function submit(e: FormEvent) {
         e.preventDefault();
-        if (name.trim()) onEnter(name.trim(), role);
+        setBusy(true);
+        setError("");
+        setNotice("");
+        try {
+            if (registering) {
+                await onRegister(username.trim(), password, role);
+                setRegistering(false);
+                setPassword("");
+                setNotice("Account created. Sign in with your new account.");
+            } else {
+                await onLogin(username.trim(), password);
+                setPassword("");
+            }
+        } catch (failure) {
+            setError(
+                failure instanceof Error
+                    ? failure.message
+                    : "Sign-in failed. Try again.",
+            );
+        } finally {
+            setBusy(false);
+        }
     }
     return (
         <main className="login-page">
@@ -47,62 +78,125 @@ export default function Login({
             </section>
             <section className="login-form-area">
                 <span className="preview-pill">
-                    <Sparkles size={14} /> Phase 1 · Design preview
+                    <ShieldCheck size={14} /> SECURE JAVA SERVER SIGN-IN
                 </span>
                 <div className="login-form-wrap">
                     <span className="mini-label">
                         YOUR NEXT CHAPTER STARTS HERE
                     </span>
                     <h2>
-                        Welcome to SupplyGo<span>.</span>
+                        {registering
+                            ? "Create your account"
+                            : "Welcome to SupplyGo"}
+                        <span>.</span>
                     </h2>
                     <p className="muted">
-                        A fresh perspective on your everyday operations.
+                        {registering
+                            ? "Join your partners on one connected supply chain."
+                            : "Sign in to your SupplyGo workspace."}
                     </p>
-                    <form onSubmit={enter}>
-                        <label htmlFor="display-name">Your display name</label>
+                    <form onSubmit={submit}>
+                        <label htmlFor="username">Username</label>
                         <input
-                            id="display-name"
-                            autoComplete="off"
+                            id="username"
+                            autoComplete="username"
+                            minLength={3}
                             maxLength={32}
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
                             required
-                            placeholder="Enter your name"
+                            placeholder="Enter your username"
                         />
-                        <label htmlFor="preview-role">Explore as</label>
-                        <select
-                            id="preview-role"
-                            value={role}
-                            onChange={(e) => setRole(e.target.value as Role)}
-                        >
-                            {roles.map((r) => (
-                                <option key={r}>{r}</option>
-                            ))}
-                        </select>
+                        <label htmlFor="password">Password</label>
+                        <input
+                            id="password"
+                            type="password"
+                            autoComplete={
+                                registering
+                                    ? "new-password"
+                                    : "current-password"
+                            }
+                            minLength={registering ? 12 : 1}
+                            maxLength={128}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            placeholder="Enter your password"
+                        />
+                        {registering && (
+                            <>
+                                <label htmlFor="account-role">
+                                    Account type
+                                </label>
+                                <select
+                                    id="account-role"
+                                    value={role}
+                                    onChange={(e) =>
+                                        setRole(
+                                            e.target.value as
+                                                "SUPPLIER" | "SELLER",
+                                        )
+                                    }
+                                >
+                                    <option value="SELLER">Seller</option>
+                                    <option value="SUPPLIER">Supplier</option>
+                                </select>
+                                <p className="muted password-hint">
+                                    Use a passphrase of 12–128 characters. Admin
+                                    and manager accounts are created by the
+                                    operator.
+                                </p>
+                            </>
+                        )}
+                        {error && (
+                            <p className="auth-error" role="alert">
+                                {error}
+                            </p>
+                        )}
+                        {notice && (
+                            <p className="auth-notice" role="status">
+                                {notice}
+                            </p>
+                        )}
                         <div className="preview-note">
                             <ShieldCheck size={20} />
                             <p>
                                 <strong>
-                                    No password needed for this preview.
+                                    Protected by your SupplyGo server.
                                 </strong>
                                 <br />
-                                Sample data only. Real sign-in and Java backend
-                                integration come in Phase 2. Don’t enter private
-                                account details.
+                                Your sign-in is verified over TLS. The browser
+                                keeps only a protected session cookie.
                             </p>
                         </div>
                         <button
                             className="btn primary login-submit"
                             type="submit"
+                            disabled={busy}
                         >
-                            Explore your workspace <ArrowRight size={18} />
+                            {busy
+                                ? "Connecting securely…"
+                                : registering
+                                  ? "Create account"
+                                  : "Sign in"}{" "}
+                            <ArrowRight size={18} />
                         </button>
                     </form>
-                    <div className="login-trust">
-                        <span className="tiny-dot" /> Browser preview · Nothing
-                        is sent to a server
-                    </div>
+                    <button
+                        className="auth-switch"
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                            setRegistering((v) => !v);
+                            setError("");
+                            setNotice("");
+                        }}
+                    >
+                        {registering
+                            ? "Already have an account? Sign in"
+                            : "New supplier or seller? Create an account"}{" "}
+                        <Sparkles size={14} />
+                    </button>
                 </div>
                 <footer>
                     SupplyGo / A little more connected. A lot more possible.

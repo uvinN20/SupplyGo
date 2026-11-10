@@ -1,4 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+    currentSession,
+    createAccount,
+    signIn,
+    signOut,
+    type AuthUser,
+} from "./lib/api";
 import {
     LayoutDashboard,
     Package,
@@ -35,9 +42,25 @@ const navigation: { name: string; icon: LucideIcon; phase?: string }[] = [
     { name: "Chat", icon: MessageCircle, phase: "Phase 8" },
 ];
 export default function App() {
-    const [session, setSession] = useState<{ name: string; role: Role } | null>(
-        null,
-    );
+    const [session, setSession] = useState<AuthUser | null>(null);
+    const [checkingSession, setCheckingSession] = useState(true);
+    const [logoutError, setLogoutError] = useState("");
+    useEffect(() => {
+        let active = true;
+        currentSession()
+            .then((user) => {
+                if (active) setSession(user);
+            })
+            .catch(() => {
+                if (active) setSession(null);
+            })
+            .finally(() => {
+                if (active) setCheckingSession(false);
+            });
+        return () => {
+            active = false;
+        };
+    }, []);
     const [page, setPage] = useState("Dashboard");
     const [menu, setMenu] = useState(false);
     const [products, setProducts] = useState<Product[]>(() =>
@@ -48,12 +71,21 @@ export default function App() {
         setMenu(false);
         window.scrollTo({ top: 0, behavior: "instant" });
     }
+    if (checkingSession)
+        return (
+            <main className="session-loading" aria-live="polite">
+                Connecting securely to SupplyGo…
+            </main>
+        );
     if (!session)
         return (
             <Login
-                onEnter={(name, role) => {
-                    setSession({ name, role });
+                onLogin={async (username, password) => {
+                    setSession(await signIn(username, password));
                     setPage("Dashboard");
+                }}
+                onRegister={async (username, password, role) => {
+                    await createAccount(username, password, role);
                 }}
             />
         );
@@ -117,9 +149,9 @@ export default function App() {
                         </span>
                         <strong>A fresh look is growing.</strong>
                         <p>
-                            You’re exploring Phase 1.
+                            You’re exploring the web preview.
                             <br />
-                            Made to try. Ready for feedback.
+                            Sample workspace data only.
                         </p>
                         <button onClick={() => navigate("About preview")}>
                             About this preview <ArrowUpRight size={15} />
@@ -127,14 +159,29 @@ export default function App() {
                     </div>
                     <button
                         className="logout"
-                        onClick={() => {
-                            setSession(null);
-                            setProducts(initialProducts.map((p) => ({ ...p })));
-                            setMenu(false);
+                        onClick={async () => {
+                            setLogoutError("");
+                            try {
+                                await signOut();
+                                setSession(null);
+                                setProducts(
+                                    initialProducts.map((p) => ({ ...p })),
+                                );
+                                setMenu(false);
+                            } catch {
+                                setLogoutError(
+                                    "Could not reach the server to end your session. Try again.",
+                                );
+                            }
                         }}
                     >
-                        <LogOut size={18} /> Leave preview
+                        <LogOut size={18} /> Sign out
                     </button>
+                    {logoutError && (
+                        <p className="auth-error sidebar-error" role="alert">
+                            {logoutError}
+                        </p>
+                    )}
                     <div className="sidebar-footer">
                         SUPPLYGO <span>v0.1 · WEB PREVIEW</span>
                     </div>
@@ -161,11 +208,11 @@ export default function App() {
                         </span>
                         <div className="user-summary">
                             <span className="avatar">
-                                {session.name.slice(0, 2).toUpperCase()}
+                                {session.username.slice(0, 2).toUpperCase()}
                             </span>
                             <span>
-                                <strong>{session.name}</strong>
-                                <small>{session.role} preview</small>
+                                <strong>{session.username}</strong>
+                                <small>{session.role}</small>
                             </span>
                         </div>
                     </div>
@@ -173,14 +220,14 @@ export default function App() {
                 <div className="demo-strip">
                     <FlaskConical size={14} />
                     <span>
-                        Design preview · Sample data only. Not connected to the
-                        Java backend.
+                        Signed in · Workspace content and actions below are
+                        sample data.
                     </span>
                 </div>
                 <main id="main-content" className="main-content" tabIndex={-1}>
                     {page === "Dashboard" ? (
                         <Dashboard
-                            name={session.name}
+                            name={session.username}
                             role={session.role}
                             products={products}
                             navigate={navigate}
@@ -324,7 +371,7 @@ function Planned({
         Routes: "Location selectors, shortest-route results and a visual road graph powered by the Java backend.",
         Chat: "A colourful team conversation view connected through a WebSocket-to-UDP bridge.",
         "About preview":
-            "Phase 1 lets you review the design before we connect real accounts and data. Try the dashboard, search inventory, add a sample product as Admin, and explore sample orders. All sample edits reset on reload or when leaving the preview.",
+            "Your account is authenticated by the Java server. This preview workspace still uses sample inventory and orders; its edits stay in this browser and reset when you sign out.",
     };
     return (
         <div className="page-enter">
@@ -340,7 +387,7 @@ function Planned({
                 </span>
                 <span className="preview-pill">
                     {navigation.find((n) => n.name === page)?.phase ??
-                        "Phase 1"}{" "}
+                        "Web preview"}{" "}
                     · {page === "About preview" ? "Current preview" : "Planned"}
                 </span>
                 <h2>
