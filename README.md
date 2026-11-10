@@ -87,3 +87,7 @@ These are future tasks, not completed features.
 ## Contributing
 
 Use a focused feature or bugfix branch, run `mvn clean verify`, and describe the behaviour and validation in the pull request. Commit messages follow `<type>(<scope>): <short summary>`, for example `docs(setup): clarify TLS launch instructions`.
+
+## Browser interface preview
+
+The colourful React web interface is being developed in phases. See [the Phase 1 preview guide](frontend/README.md) to run the browser design locally with sample data. This preview does not yet connect to the Java backend.
