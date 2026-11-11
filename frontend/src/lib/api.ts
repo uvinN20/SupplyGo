@@ -131,3 +131,17 @@ export async function createInventoryProduct(
         }),
     );
 }
+
+export async function changeInventoryStock(
+    productId: string,
+    quantity: number,
+    action: "receive" | "withdraw",
+): Promise<void> {
+    await readData<{ status: string }>(
+        await request("/api/inventory/stock", {
+            method: "POST",
+            headers: csrfHeaders,
+            body: JSON.stringify({ productId, quantity, action }),
+        }),
+    );
+}
