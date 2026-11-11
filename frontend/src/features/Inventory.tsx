@@ -280,8 +280,8 @@ export default function Inventory({
             </p>
             {!canEdit(role) && (
                 <p className="read-only-note">
-                    {role} preview: inventory browsing only. Editing is shown
-                    for Admin and Production Manager roles.
+                    {role}: inventory browsing only. Editing is available
+                    to Admin and Production Manager roles.
                 </p>
             )}
             <p role="status" className="notice">
@@ -347,7 +347,7 @@ function AddProduct({
         if (
             !/^[A-Z0-9_-]{1,24}$/.test(id) ||
             !name ||
-            name.length > 64 ||
+            name.length > 60 ||
             !Number.isInteger(available) ||
             available < 0 ||
             available > 1_000_000
@@ -420,7 +420,7 @@ function AddProduct({
                     id="product-name"
                     name="name"
                     required
-                    maxLength={64}
+                    maxLength={60}
                     placeholder="Fresh papaya"
                 />
                 <label htmlFor="product-quantity">Opening stock (whole units)</label>
