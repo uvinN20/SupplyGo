@@ -203,7 +203,10 @@ public final class WebGatewayServer implements AutoCloseable {
         String text = value.getAsString();
         if (!text.matches("0|[1-9][0-9]{0,6}"))
             throw new ApiFailure(400, "INVALID_REQUEST", "quantity must be a whole number from 0 to 1000000");
-        return Integer.parseInt(text);
+        int quantity = Integer.parseInt(text);
+        if (quantity > 1_000_000)
+            throw new ApiFailure(400, "INVALID_REQUEST", "quantity must be a whole number from 0 to 1000000");
+        return quantity;
     }
 
     private Session requireSession(HttpExchange exchange) throws ApiFailure {
