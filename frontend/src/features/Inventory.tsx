@@ -245,21 +245,13 @@ export default function Inventory({
                     products={products}
                     onClose={() => setAdding(false)}
                     onSave={async (p) => {
-                        try {
-                            await onAdd(p);
-                            setAdding(false);
-                            setQuery("");
-                            setCategory("All categories");
-                            setStatus("All stock");
-                            setPage(Math.floor(products.length / 5));
-                            setNotice(`${p.name} was saved to the SupplyGo server.`);
-                        } catch (error) {
-                            setNotice(
-                                error instanceof Error
-                                    ? error.message
-                                    : "Could not save the product.",
-                            );
-                        }
+                        await onAdd(p);
+                        setAdding(false);
+                        setQuery("");
+                        setCategory("All categories");
+                        setStatus("All stock");
+                        setPage(Math.floor(products.length / 5));
+                        setNotice(`${p.name} was saved to the SupplyGo server.`);
                     }}
                 />
             )}{" "}
@@ -305,15 +297,23 @@ function AddProduct({
             setError("That product ID already exists. Choose a different ID.");
             return;
         }
-        await onSave({
-            id,
-            name,
-            available,
-            category: "Uncategorized",
-            reserved: 0,
-            symbol: "📦",
-            tone: "mint",
-        });
+        try {
+            await onSave({
+                id,
+                name,
+                available,
+                category: "Uncategorized",
+                reserved: 0,
+                symbol: "📦",
+                tone: "mint",
+            });
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "Could not save the product.",
+            );
+        }
     }
     return (
         <dialog
