@@ -272,11 +272,16 @@ export default function App() {
                             error={inventoryError}
                             onAdd={async (product) => {
                                 await createInventoryProduct(product);
-                                setInventory(await listInventory());
+                                setInventory((current) => [...current, product]);
                             }}
                             onStockChange={async (productId, quantity, action) => {
                                 await changeInventoryStock(productId, quantity, action);
-                                setInventory(await listInventory());
+                                try {
+                                    setInventory(await listInventory());
+                                    setInventoryError("");
+                                } catch {
+                                    setInventoryError("Stock was saved, but inventory could not refresh. Reopen this page to reload it.");
+                                }
                             }}
                         />
                     ) : page === "Orders" ? (
