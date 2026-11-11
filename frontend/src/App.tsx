@@ -232,7 +232,7 @@ export default function App() {
                     </div>
                     <div className="topbar-right">
                         <span className="demo-badge">
-                            <span className="tiny-dot" /> {page === "Inventory" ? "Live server data" : "Demo data"}
+                            <span className="tiny-dot" /> {page === "Inventory" ? (inventoryError ? "Inventory unavailable" : "Live server data") : "Demo data"}
                         </span>
                         <div className="user-summary">
                             <span className="avatar">
@@ -249,7 +249,9 @@ export default function App() {
                     {page === "Inventory" ? <Package size={14} /> : <FlaskConical size={14} />}
                     <span>
                         {page === "Inventory"
-                            ? "Inventory is loaded from your SupplyGo server and saved in its local data store."
+                            ? inventoryError
+                                ? "Could not load inventory from the SupplyGo server."
+                                : "Inventory is loaded from your SupplyGo server and saved in its local data store."
                             : "Signed in · Workspace content and actions below are sample data."}
                     </span>
                 </div>
