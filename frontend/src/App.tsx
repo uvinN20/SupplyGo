@@ -4,6 +4,8 @@ import {
     createAccount,
     signIn,
     signOut,
+    listInventory,
+    createInventoryProduct,
     type AuthUser,
 } from "./lib/api";
 import {
@@ -63,9 +65,37 @@ export default function App() {
     }, []);
     const [page, setPage] = useState("Dashboard");
     const [menu, setMenu] = useState(false);
-    const [products, setProducts] = useState<Product[]>(() =>
+    const [products] = useState<Product[]>(() =>
         initialProducts.map((p) => ({ ...p })),
     );
+    const [inventory, setInventory] = useState<Product[]>([]);
+    const [inventoryLoading, setInventoryLoading] = useState(false);
+    const [inventoryError, setInventoryError] = useState("");
+
+    useEffect(() => {
+        if (!session) return;
+        let active = true;
+        setInventoryLoading(true);
+        setInventoryError("");
+        listInventory()
+            .then((items) => {
+                if (active) setInventory(items);
+            })
+            .catch((error: unknown) => {
+                if (active)
+                    setInventoryError(
+                        error instanceof Error
+                            ? error.message
+                            : "Could not load inventory.",
+                    );
+            })
+            .finally(() => {
+                if (active) setInventoryLoading(false);
+            });
+        return () => {
+            active = false;
+        };
+    }, [session]);
     function navigate(next: string) {
         setPage(next);
         setMenu(false);
@@ -164,9 +194,7 @@ export default function App() {
                             try {
                                 await signOut();
                                 setSession(null);
-                                setProducts(
-                                    initialProducts.map((p) => ({ ...p })),
-                                );
+                                setInventory([]);
                                 setMenu(false);
                             } catch {
                                 setLogoutError(
@@ -204,7 +232,7 @@ export default function App() {
                     </div>
                     <div className="topbar-right">
                         <span className="demo-badge">
-                            <span className="tiny-dot" /> Demo data
+                            <span className="tiny-dot" /> {page === "Inventory" ? "Live server data" : "Demo data"}
                         </span>
                         <div className="user-summary">
                             <span className="avatar">
@@ -218,10 +246,11 @@ export default function App() {
                     </div>
                 </header>
                 <div className="demo-strip">
-                    <FlaskConical size={14} />
+                    {page === "Inventory" ? <Package size={14} /> : <FlaskConical size={14} />}
                     <span>
-                        Signed in · Workspace content and actions below are
-                        sample data.
+                        {page === "Inventory"
+                            ? "Inventory is loaded from your SupplyGo server and saved in its local data store."
+                            : "Signed in · Workspace content and actions below are sample data."}
                     </span>
                 </div>
                 <main id="main-content" className="main-content" tabIndex={-1}>
@@ -234,16 +263,14 @@ export default function App() {
                         />
                     ) : page === "Inventory" ? (
                         <Inventory
-                            products={products}
+                            products={inventory}
                             role={session.role}
-                            onAdd={(p) =>
-                                setProducts((current) => [...current, p])
-                            }
-                            onReset={() =>
-                                setProducts(
-                                    initialProducts.map((p) => ({ ...p })),
-                                )
-                            }
+                            loading={inventoryLoading}
+                            error={inventoryError}
+                            onAdd={async (product) => {
+                                await createInventoryProduct(product);
+                                setInventory((current) => [...current, product]);
+                            }}
                         />
                     ) : page === "Orders" ? (
                         <Orders />
