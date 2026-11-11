@@ -68,7 +68,11 @@ describe("Authenticated web preview", () => {
             "admin",
             "a strong test password",
         );
-        expect(screen.getByText(/sample data/)).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /Workspace content and actions below are sample data/,
+            ),
+        ).toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Sign out" }));
         expect(api.signOut).toHaveBeenCalledOnce();
         expect(
