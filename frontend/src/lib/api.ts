@@ -1,4 +1,4 @@
-import type { Role } from "./demo";
+import type { Product, Role } from "./demo";
 export type AuthUser = { username: string; role: Role };
 const csrfHeaders = {
     "Content-Type": "application/json",
@@ -80,4 +80,54 @@ export async function signOut(): Promise<void> {
         headers: { "X-SupplyGo-Request": "1" },
     });
     if (!response.ok) throw new Error("Could not end the SupplyGo session.");
+}
+
+type InventoryResponse = {
+    products: Array<{
+        id: string;
+        name: string;
+        quantity: number;
+        reserved: number;
+    }>;
+};
+
+async function readData<T>(response: Response): Promise<T> {
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+        throw new Error(
+            body?.error?.message || "SupplyGo could not complete this request.",
+        );
+    }
+    return body as T;
+}
+
+export async function listInventory(): Promise<Product[]> {
+    const body = await readData<InventoryResponse>(
+        await request("/api/inventory"),
+    );
+    return body.products.map((item) => ({
+        id: item.id,
+        name: item.name,
+        category: "Uncategorized",
+        available: item.quantity,
+        reserved: item.reserved,
+        symbol: "📦",
+        tone: "mint",
+    }));
+}
+
+export async function createInventoryProduct(
+    product: Product,
+): Promise<void> {
+    await readData<{ status: string }>(
+        await request("/api/inventory/products", {
+            method: "POST",
+            headers: csrfHeaders,
+            body: JSON.stringify({
+                id: product.id,
+                name: product.name,
+                quantity: product.available,
+            }),
+        }),
+    );
 }
