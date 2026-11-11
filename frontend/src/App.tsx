@@ -181,7 +181,7 @@ export default function App() {
                         <p>
                             You’re exploring the web preview.
                             <br />
-                            Sample workspace data only.
+                            Dashboard and orders still use sample data.
                         </p>
                         <button onClick={() => navigate("About preview")}>
                             About this preview <ArrowUpRight size={15} />
@@ -400,7 +400,7 @@ function Planned({
         Routes: "Location selectors, shortest-route results and a visual road graph powered by the Java backend.",
         Chat: "A colourful team conversation view connected through a WebSocket-to-UDP bridge.",
         "About preview":
-            "Your account is authenticated by the Java server. This preview workspace still uses sample inventory and orders; its edits stay in this browser and reset when you sign out.",
+            "Your account is authenticated by the Java server. Inventory is loaded from the server and saved in data/inventory.json. Dashboard and orders still show sample records.",
     };
     return (
         <div className="page-enter">
