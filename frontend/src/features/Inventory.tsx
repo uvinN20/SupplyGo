@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
     Plus,
+    Minus,
     Search,
     SlidersHorizontal,
     X,
@@ -22,12 +23,18 @@ export default function Inventory({
     loading,
     error,
     onAdd,
+    onStockChange,
 }: {
     products: Product[];
     role: Role;
     loading: boolean;
     error: string;
     onAdd: (p: Product) => Promise<void>;
+    onStockChange: (
+        productId: string,
+        quantity: number,
+        action: "receive" | "withdraw",
+    ) => Promise<void>;
 }) {
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All categories");
@@ -35,6 +42,11 @@ export default function Inventory({
     const [page, setPage] = useState(0);
     const [adding, setAdding] = useState(false);
     const [notice, setNotice] = useState("");
+    const [stockEdit, setStockEdit] = useState<{
+        id: string;
+        name: string;
+        action: "receive" | "withdraw";
+    } | null>(null);
     const filtered = filterProducts(products, query, category, status);
     const totalPages = Math.max(1, Math.ceil(filtered.length / 5));
     const safePage = Math.min(page, totalPages - 1);
@@ -134,6 +146,7 @@ export default function Inventory({
                                 <th>Reserved</th>
                                 <th>Available</th>
                                 <th>Status</th>
+                                {canEdit(role) && <th>Stock actions</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -172,6 +185,40 @@ export default function Inventory({
                                                 {stockState(p)}
                                             </span>
                                         </td>
+                                        {canEdit(role) && (
+                                            <td>
+                                                <div className="filters">
+                                                    <button
+                                                        className="icon-btn"
+                                                        aria-label={`Receive stock for ${p.name}`}
+                                                        title="Receive stock"
+                                                        onClick={() =>
+                                                            setStockEdit({
+                                                                id: p.id,
+                                                                name: p.name,
+                                                                action: "receive",
+                                                            })
+                                                        }
+                                                    >
+                                                        <Plus size={16} />
+                                                    </button>
+                                                    <button
+                                                        className="icon-btn"
+                                                        aria-label={`Withdraw stock for ${p.name}`}
+                                                        title="Withdraw stock"
+                                                        onClick={() =>
+                                                            setStockEdit({
+                                                                id: p.id,
+                                                                name: p.name,
+                                                                action: "withdraw",
+                                                            })
+                                                        }
+                                                    >
+                                                        <Minus size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                         </tbody>
@@ -240,6 +287,23 @@ export default function Inventory({
             <p role="status" className="notice">
                 {notice}
             </p>
+            {stockEdit && (
+                <StockChange
+                    product={stockEdit}
+                    onClose={() => setStockEdit(null)}
+                    onSave={async (quantity) => {
+                        await onStockChange(
+                            stockEdit.id,
+                            quantity,
+                            stockEdit.action,
+                        );
+                        setStockEdit(null);
+                        setNotice(
+                            `Stock was ${stockEdit.action === "receive" ? "received" : "withdrawn"} for ${stockEdit.name}.`,
+                        );
+                    }}
+                />
+            )}
             {adding && (
                 <AddProduct
                     products={products}
@@ -383,6 +447,90 @@ function AddProduct({
                     </button>
                     <button className="btn primary" type="submit">
                         Save product
+                    </button>
+                </div>
+            </form>
+        </dialog>
+    );
+}
+
+function StockChange({
+    product,
+    onClose,
+    onSave,
+}: {
+    product: { id: string; name: string; action: "receive" | "withdraw" };
+    onClose: () => void;
+    onSave: (quantity: number) => Promise<void>;
+}) {
+    const dialog = useRef<HTMLDialogElement>(null);
+    const [error, setError] = useState("");
+    const [saving, setSaving] = useState(false);
+    useEffect(() => {
+        const element = dialog.current;
+        element?.showModal();
+        return () => element?.close();
+    }, []);
+    async function save(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const quantity = Number(form.get("quantity"));
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1_000_000) {
+            setError("Enter a whole quantity from 1 to 1000000.");
+            return;
+        }
+        setSaving(true);
+        setError("");
+        try {
+            await onSave(quantity);
+        } catch (failure) {
+            setError(
+                failure instanceof Error
+                    ? failure.message
+                    : "Could not update stock.",
+            );
+        } finally {
+            setSaving(false);
+        }
+    }
+    const receiving = product.action === "receive";
+    return (
+        <dialog ref={dialog} aria-labelledby="stock-title">
+            <form onSubmit={save}>
+                <div className="section-heading">
+                    <div>
+                        <span className="mini-label">SERVER INVENTORY</span>
+                        <h2 id="stock-title">{receiving ? "Receive stock" : "Withdraw stock"}</h2>
+                    </div>
+                    <button
+                        type="button"
+                        className="icon-btn"
+                        aria-label="Close stock form"
+                        onClick={onClose}
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+                <p className="muted">{product.name} · {product.id}</p>
+                <label htmlFor="stock-quantity">Quantity (whole units)</label>
+                <input
+                    autoFocus
+                    id="stock-quantity"
+                    name="quantity"
+                    type="number"
+                    min="1"
+                    max="1000000"
+                    step="1"
+                    defaultValue="1"
+                    required
+                />
+                <p role="alert" className="error">{error}</p>
+                <div className="modal-actions">
+                    <button type="button" className="btn white" onClick={onClose}>
+                        Cancel
+                    </button>
+                    <button className="btn primary" type="submit" disabled={saving}>
+                        {saving ? "Saving…" : receiving ? "Receive stock" : "Withdraw stock"}
                     </button>
                 </div>
             </form>
