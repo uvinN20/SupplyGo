@@ -29,6 +29,13 @@ Configuration properties:
 
 The HTTP gateway is intended for local Vite development. For a deployed browser app, put the gateway behind HTTPS on the same origin as the frontend and set `-Dsupplygo.web.secureCookie=true`; do not expose the development HTTP listener directly to the internet. Configure the reverse proxy to preserve the `/api` path. No wildcard CORS is enabled.
 
-The cookie is HttpOnly, SameSite=Strict, scoped to `/api`, and has a 15-minute idle and 8-hour absolute server-side lifetime. State-changing browser endpoints require the `X-SupplyGo-Request: 1` header. Authentication is the only dashboard data connected in this phase: dashboard, inventory and orders remain sample data until their API integration is implemented.
+The cookie is HttpOnly, SameSite=Strict, scoped to `/api`, and has a 15-minute idle and 8-hour absolute server-side lifetime. State-changing browser endpoints require the `X-SupplyGo-Request: 1` header. Authentication and inventory are connected to the Java server. Dashboard and Orders remain sample data in this phase.
+
+Inventory endpoints require an active server session:
+- `GET /api/inventory` lists persisted products and stock.
+- `POST /api/inventory/products` creates a product and its opening stock. JSON fields: `id`, `name`, and `quantity`.
+- `POST /api/inventory/stock` receives or withdraws stock. JSON fields: `productId`, `quantity`, and `action` (`receive` or `withdraw`).
+
+Inventory and orders are persisted by the Java server in `data/inventory.json`; back up that file before moving or deleting the data directory. The server enforces role permissions. Only administrators and production managers can create products or change stock.
 
 Self-service account creation allows only supplier and seller roles. Admin and manager accounts must be provisioned by an operator through the existing Java account management command.
