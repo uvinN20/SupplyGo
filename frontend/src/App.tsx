@@ -6,6 +6,7 @@ import {
     signOut,
     listInventory,
     createInventoryProduct,
+    changeInventoryStock,
     type AuthUser,
 } from "./lib/api";
 import {
@@ -271,7 +272,11 @@ export default function App() {
                             error={inventoryError}
                             onAdd={async (product) => {
                                 await createInventoryProduct(product);
-                                setInventory((current) => [...current, product]);
+                                setInventory(await listInventory());
+                            }}
+                            onStockChange={async (productId, quantity, action) => {
+                                await changeInventoryStock(productId, quantity, action);
+                                setInventory(await listInventory());
                             }}
                         />
                     ) : page === "Orders" ? (
