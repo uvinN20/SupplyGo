@@ -2,7 +2,7 @@
 
 A Java desktop client and concurrent TCP server for supply-chain operations. Built as a team project for **EC5205 — Operating System and Network Programming, University of Ruhuna**.
 
-**Status: in development.** The repository includes working modules and automated test code; delivery routing and UDP chat remain planned.
+**Status: in development.** The repository includes implemented desktop and browser modules plus automated tests. The browser app uses a Java HTTP gateway for live operations; see the guides below for which screens are connected.
 
 [Getting started](docs/GETTING_STARTED.md) · [TLS and accounts](docs/AUTHENTICATION.md) · [Protocol](docs/NETWORK_PROTOCOL.md)
 
@@ -16,6 +16,8 @@ A Java desktop client and concurrent TCP server for supply-chain operations. Bui
 | Inventory | Product management, stock batches and FIFO withdrawals |
 | Orders | Stock reservation, approval, fulfilment, cancellation and role-based access |
 | Business profiles | Supplier/seller profiles and role-filtered manager directories |
+| Routes | Saved locations/roads and shortest-route lookup |
+| Chat | Shared UDP chat room; browser access through the gateway bridge |
 | Storage | Server-owned file repositories for accounts, inventory/orders and business profiles |
 | Tests | JUnit protocol, service, authentication and network integration tests |
 
@@ -70,11 +72,11 @@ Clients send requests; the server validates permissions and owns shared state. S
 
 ## Next milestones
 
-- UDP messaging and server-pushed notifications.
-- Delivery route optimization using graph algorithms.
-- Further integration testing and demonstration scenarios.
+- Finish integrating the remaining browser screens with live server data.
+- Add persistence and operational safeguards where the coursework scope requires them.
+- Complete end-to-end browser, accessibility and demonstration checks.
 
-These are future tasks, not completed features.
+The browser chat bridge is a shared, temporary, best-effort room; it does not provide encrypted message content or private conversations.
 
 ## Meet the team
 
@@ -90,4 +92,4 @@ Use a focused feature or bugfix branch, run `mvn clean verify`, and describe the
 
 ## Browser interface preview
 
-The colourful React web interface is being developed in phases. See [the Phase 1 preview guide](frontend/README.md) to run the browser design locally with sample data. This preview does not yet connect to the Java backend.
+The React web application is being developed in phases. See [the frontend guide](frontend/README.md), [gateway setup](docs/WEB_GATEWAY.md) and [browser review checklist](docs/WEB_PREVIEW.md) to run and review the connected browser features.

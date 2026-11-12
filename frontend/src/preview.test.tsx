@@ -24,6 +24,10 @@ const api = vi.hoisted(() => ({
     saveRouteLocation: vi.fn(),
     saveRouteRoad: vi.fn(),
     findShortestRoute: vi.fn(),
+    joinChat: vi.fn(),
+    leaveChat: vi.fn(),
+    listChatMessages: vi.fn(),
+    sendChatMessage: vi.fn(),
 }));
 vi.mock("./lib/api", () => api);
 
@@ -149,7 +153,7 @@ describe("Authenticated web preview", () => {
             "Account created",
         );
     });
-    it("filters live orders and explains planned destinations", async () => {
+    it("filters live orders and joins the shared live chat room", async () => {
         const user = await enter();
         api.listOrders.mockResolvedValue([
             { id: 1043, clientOrderId: "00000000-0000-4000-8000-000000000043", sellerUsername: "freshmart", productId: "FR-001", quantity: 12, status: "CANCELLED", createdAt: "2026-11-12T00:00:00Z", updatedAt: "2026-11-12T00:00:00Z", updatedBy: "admin" },
@@ -162,8 +166,15 @@ describe("Authenticated web preview", () => {
         );
         expect(await screen.findByText("#SG-1043")).toBeInTheDocument();
         expect(screen.queryByText("#SG-1048")).not.toBeInTheDocument();
+        api.joinChat.mockResolvedValue({ username: "admin" });
+        api.leaveChat.mockResolvedValue(undefined);
+        api.listChatMessages.mockResolvedValue({ messages: [], cursor: 0, truncated: false });
         await user.click(screen.getByRole("button", { name: "Chat" }));
-        expect(screen.getByText("Phase 8 · Planned")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "SupplyGo shared room" })).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Join room" }));
+        expect(await screen.findByText("Joined · live messages")).toBeInTheDocument();
+        expect(api.joinChat).toHaveBeenCalledOnce();
+        expect(api.listChatMessages).toHaveBeenCalled();
     });
     it("calculates honest totals and combines category/status/search filters", () => {
         expect(metrics(initialProducts)).toEqual({

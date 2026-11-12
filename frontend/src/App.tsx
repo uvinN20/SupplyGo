@@ -37,6 +37,7 @@ import Dashboard from "./features/Dashboard";
 import Inventory from "./features/Inventory";
 import BusinessProfiles from "./features/BusinessProfiles";
 import Routes from "./features/Routes";
+import Chat from "./features/Chat";
 import {
     type Product,
 } from "./lib/demo";
@@ -46,7 +47,7 @@ const navigation: { name: string; icon: LucideIcon; phase?: string }[] = [
     { name: "Orders", icon: ShoppingBag },
     { name: "Business profiles", icon: Users },
     { name: "Routes", icon: Route },
-    { name: "Chat", icon: MessageCircle, phase: "Phase 8" },
+    { name: "Chat", icon: MessageCircle },
 ];
 export default function App() {
     const [session, setSession] = useState<AuthUser | null>(null);
@@ -220,7 +221,7 @@ export default function App() {
                         <p>
                             You’re exploring the web preview.
                             <br />
-                            Dashboard, Inventory, Orders, Business profiles and Routes are connected to your SupplyGo server. Chat is planned.
+                            Dashboard, Inventory, Orders, Business profiles, Routes and Chat are connected to your SupplyGo server.
                         </p>
                         <button onClick={() => navigate("About preview")}>
                             About this preview <ArrowUpRight size={15} />
@@ -271,7 +272,7 @@ export default function App() {
                     </div>
                     <div className="topbar-right">
                         <span className="demo-badge">
-                            <span className="tiny-dot" /> {["Inventory", "Orders", "Dashboard", "Business profiles", "Routes"].includes(page) ? "Live server data" : "Demo data"}
+                            <span className="tiny-dot" /> {["Inventory", "Orders", "Dashboard", "Business profiles", "Routes", "Chat"].includes(page) ? "Live server data" : "Demo data"}
                         </span>
                         <div className="user-summary">
                             <span className="avatar">
@@ -297,7 +298,9 @@ export default function App() {
                                     ? "Profile details and role-based directories are loaded from your SupplyGo server."
                                     : page === "Routes"
                                         ? "Locations and roads are loaded from your SupplyGo server."
-                                        : dashboardOrdersError
+                                        : page === "Chat"
+                                            ? "Messages are relayed through your authenticated SupplyGo session to the shared UDP room."
+                                            : dashboardOrdersError
                                         ? dashboardOrdersError
                                         : "Dashboard totals and recent orders are loaded from your SupplyGo server."}
                     </span>
@@ -346,6 +349,8 @@ export default function App() {
                                 try { setInventory(await listInventory()); } catch { /* Keep the last loaded inventory view. */ }
                             }}
                         />
+                    ) : page === "Chat" ? (
+                        <Chat />
                     ) : (
                         <Planned page={page} navigate={navigate} />
                     )}
@@ -528,7 +533,7 @@ function Planned({
         "Business profiles":
             "Supplier and seller profiles, clear contact details and role-based directories.",
         Routes: "Location selectors, shortest-route results and a visual road graph powered by the Java backend.",
-        Chat: "A colourful team conversation view connected through a WebSocket-to-UDP bridge.",
+        Chat: "A live shared conversation relayed through the authenticated gateway to the Java UDP chat room.",
         "About preview":
             "Your account, inventory, orders, and dashboard are connected to the Java server.",
     };

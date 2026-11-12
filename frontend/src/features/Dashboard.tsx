@@ -213,7 +213,7 @@ export default function Dashboard({
                 <section className="next-card">
                     <span className="next-icon"><MessageCircle size={24} /></span>
                     <h2>Better, together.</h2>
-                    <p>You’re exploring the {role} preview. Team chat, business profiles and routes are planned next.</p>
+                    <p>You’re in the {role} workspace. Chat, business profiles and routes are connected to your SupplyGo server.</p>
                     <button className="text-button" onClick={() => navigate("Chat")}>
                         See what’s next <ArrowRight size={17} />
                     </button>

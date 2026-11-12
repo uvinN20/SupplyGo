@@ -29,7 +29,7 @@ Configuration properties:
 
 The HTTP gateway is intended for local Vite development. For a deployed browser app, put the gateway behind HTTPS on the same origin as the frontend and set `-Dsupplygo.web.secureCookie=true`; do not expose the development HTTP listener directly to the internet. Configure the reverse proxy to preserve the `/api` path. No wildcard CORS is enabled.
 
-The cookie is HttpOnly, SameSite=Strict, scoped to `/api`, and has a 15-minute idle and 8-hour absolute server-side lifetime. State-changing browser endpoints require the `X-SupplyGo-Request: 1` header. Authentication, inventory, orders, and dashboard summaries use live Java server data. The dashboard reuses the inventory and orders endpoints described below.
+The cookie is HttpOnly, SameSite=Strict, scoped to `/api`, and has a 15-minute idle and 8-hour absolute server-side lifetime. State-changing browser endpoints require the `X-SupplyGo-Request: 1` header. Authentication, inventory, orders, business profiles, routes, chat, and dashboard summaries use live Java server data. The dashboard reuses the inventory and orders endpoints described below.
 
 Inventory endpoints require an active server session:
 - `GET /api/inventory` lists persisted products and stock.
@@ -58,5 +58,13 @@ Route endpoints require an active server session:
 - `GET /api/routes/shortest?from=ID&to=ID` returns the shortest saved path and its total distance.
 - All signed-in roles can view and search routes. Only Admin and Production Manager can add or update locations and roads; the Java server enforces these permissions.
 - The road network is persisted by the Java server in `data/routes.json`.
+
+Chat endpoints require an active server session:
+- `POST /api/chat/session` joins the shared room. It requires the CSRF header and returns the signed-in username.
+- `DELETE /api/chat/session` leaves the room and revokes the short-lived UDP grant. It requires the CSRF header.
+- `GET /api/chat/messages?after=0` returns newer room messages and a cursor. The browser polls this endpoint while the Chat page is open.
+- `POST /api/chat/messages` sends a message. JSON field: `text` (1–240 characters; the UDP protocol also enforces its UTF-8 byte limit).
+
+The gateway obtains a short-lived chat grant over the authenticated TLS/TCP session and runs the UDP client itself; the browser never receives the grant or opens a UDP socket. Joined users from all roles share the same room. Message history is temporary, limited to the gateway session's most recent 200 received messages, and cleared when the user joins a fresh room. UDP delivery is best-effort, and chat messages are not encrypted. Do not send passwords or sensitive business information.
 
 Self-service account creation allows only supplier and seller roles. Admin and manager accounts must be provisioned by an operator through the existing Java account management command.

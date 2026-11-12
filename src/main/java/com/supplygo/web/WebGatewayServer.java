@@ -7,11 +7,13 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import com.supplygo.client.ServerRejectedException;
 import com.supplygo.client.SupplyGoTcpClient;
+import com.supplygo.client.UdpChatClient;
 import com.supplygo.model.OrderStatus;
 import com.supplygo.model.SupplyOrder;
 import com.supplygo.model.Role;
 import com.supplygo.model.UserProfile;
 import com.supplygo.protocol.BusinessProfileData;
+import com.supplygo.protocol.ChatCredentials;
 import com.supplygo.protocol.OrderData;
 import com.supplygo.protocol.ProtocolCodec;
 import com.supplygo.protocol.ProtocolException;
@@ -22,6 +24,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.ArrayDeque;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
@@ -102,6 +105,10 @@ public final class WebGatewayServer implements AutoCloseable {
                 if (path.equals("/api/routes/locations") && method.equals("POST")) { requireBrowserRequest(exchange); saveRouteLocation(exchange); return; }
                 if (path.equals("/api/routes/roads") && method.equals("POST")) { requireBrowserRequest(exchange); saveRouteRoad(exchange); return; }
                 if (path.equals("/api/routes/shortest") && method.equals("GET")) { findShortestRoute(exchange); return; }
+                if (path.equals("/api/chat/session") && method.equals("POST")) { requireBrowserRequest(exchange); joinChat(exchange); return; }
+                if (path.equals("/api/chat/session") && method.equals("DELETE")) { requireBrowserRequest(exchange); leaveChat(exchange); return; }
+                if (path.equals("/api/chat/messages") && method.equals("GET")) { listChatMessages(exchange); return; }
+                if (path.equals("/api/chat/messages") && method.equals("POST")) { requireBrowserRequest(exchange); sendChatMessage(exchange); return; }
                 sendError(exchange, 404, "NOT_FOUND", "Endpoint not found");
             } catch (ApiFailure failure) {
                 sendError(exchange, failure.status, failure.code, failure.getMessage());
@@ -417,6 +424,77 @@ public final class WebGatewayServer implements AutoCloseable {
         }
     }
 
+    private void joinChat(HttpExchange exchange) throws IOException, ApiFailure {
+        Session session = requireSession(exchange);
+        synchronized (session) {
+            session.leaveChat();
+            session.resetChatHistory();
+            UdpChatClient chatClient = null;
+            try {
+                ChatCredentials grant = session.client.openChat();
+                chatClient = new UdpChatClient(session.client.chatAddress(), grant, session::rememberChatMessage);
+                chatClient.join();
+                session.chatClient = chatClient;
+                session.lastChatHeartbeat = System.currentTimeMillis();
+                JsonObject response = new JsonObject();
+                response.addProperty("status", "joined");
+                response.addProperty("username", session.profile.username());
+                send(exchange, 200, response);
+            } catch (ServerRejectedException rejected) {
+                if (chatClient != null) chatClient.close();
+                try { session.client.closeChat(); } catch (IOException ignored) { }
+                throw rejectedFailure(rejected);
+            } catch (IOException failure) {
+                if (chatClient != null) chatClient.close();
+                try { session.client.closeChat(); } catch (IOException ignored) { }
+                throw new ApiFailure(503, "CHAT_UNAVAILABLE", "Could not join the SupplyGo chat room");
+            }
+        }
+    }
+
+    private void leaveChat(HttpExchange exchange) throws IOException, ApiFailure {
+        Session session = requireSession(exchange);
+        session.leaveChat();
+        send(exchange, 200, json("status", "left"));
+    }
+
+    private void listChatMessages(HttpExchange exchange) throws IOException, ApiFailure {
+        Session session = requireSession(exchange);
+        Map<String, String> query = strictQuery(exchange, Set.of("after"));
+        String cursorText = query.get("after");
+        long after = 0;
+        if (cursorText != null) {
+            if (!cursorText.matches("0|[1-9][0-9]{0,18}"))
+                throw new ApiFailure(400, "INVALID_REQUEST", "Chat message cursor is invalid");
+            try { after = Long.parseLong(cursorText); }
+            catch (NumberFormatException error) { throw new ApiFailure(400, "INVALID_REQUEST", "Chat message cursor is out of range"); }
+        }
+        if (session.chatClient == null) throw new ApiFailure(409, "CHAT_NOT_JOINED", "Join the chat room to view messages");
+        try { session.heartbeatChatIfDue(); }
+        catch (IOException failure) { session.leaveChat(); throw new ApiFailure(503, "CHAT_UNAVAILABLE", "The SupplyGo chat connection was lost; join the room again"); }
+        send(exchange, 200, session.chatBatch(after));
+    }
+
+    private void sendChatMessage(HttpExchange exchange) throws IOException, ApiFailure {
+        JsonObject body = requestBody(exchange, Set.of("text"));
+        String text = requiredText(body, "text", 1, 240);
+        Session session = requireSession(exchange);
+        UdpChatClient chatClient = session.chatClient;
+        if (chatClient == null) throw new ApiFailure(409, "CHAT_NOT_JOINED", "Join the chat room before sending a message");
+        try {
+            String receipt = chatClient.send(text);
+            JsonObject response = new JsonObject();
+            response.addProperty("status", "accepted");
+            response.addProperty("message", receipt);
+            send(exchange, 200, response);
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "CHAT_DELIVERY_UNCONFIRMED", failure.getMessage() == null
+                    ? "The chat server did not confirm the message" : failure.getMessage());
+        }
+    }
+
     private static Map<String, String> strictQuery(HttpExchange exchange, Set<String> allowed) throws ApiFailure {
         String raw = exchange.getRequestURI().getRawQuery();
         if (raw == null || raw.isEmpty()) throw new ApiFailure(400, "INVALID_REQUEST", "Query parameters are required");
@@ -477,7 +555,7 @@ public final class WebGatewayServer implements AutoCloseable {
 
     private void logout(HttpExchange exchange) throws IOException {
         String id = cookie(exchange, SESSION_COOKIE);
-        if (id != null) { Session session = sessions.remove(id); if (session != null) session.client.close(); }
+        if (id != null) { Session session = sessions.remove(id); if (session != null) { session.leaveChat(); session.client.close(); } }
         clearCookie(exchange); send(exchange, 200, json("status", "signed_out"));
     }
 
@@ -488,7 +566,7 @@ public final class WebGatewayServer implements AutoCloseable {
         if (session == null) return null;
         long now = System.currentTimeMillis();
         if (now - session.createdAt > SESSION_ABSOLUTE_SECONDS * 1000L || now - session.lastAccess > SESSION_IDLE_SECONDS * 1000L) {
-            if (sessions.remove(id, session)) session.client.close();
+            if (sessions.remove(id, session)) { session.leaveChat(); session.client.close(); }
             return null;
         }
         session.touch(); return session;
@@ -499,14 +577,19 @@ public final class WebGatewayServer implements AutoCloseable {
         pruneExpired();
         sessions.forEach((id, session) -> {
             try { session.client.ping(); }
-            catch (IOException failure) { if (sessions.remove(id, session)) session.client.close(); }
+            catch (IOException failure) {
+                if (sessions.remove(id, session)) { session.leaveChat(); session.client.close(); }
+                return;
+            }
+            try { session.heartbeatChatIfDue(); }
+            catch (IOException failure) { session.leaveChat(); }
         });
     }
     private void pruneExpired() {
         long now = System.currentTimeMillis();
         sessions.forEach((id, session) -> {
             if (now - session.createdAt > SESSION_ABSOLUTE_SECONDS * 1000L || now - session.lastAccess > SESSION_IDLE_SECONDS * 1000L)
-                if (sessions.remove(id, session)) session.client.close();
+                if (sessions.remove(id, session)) { session.leaveChat(); session.client.close(); }
         });
     }
     private static int remainingIdle(Session session) {
@@ -584,13 +667,67 @@ public final class WebGatewayServer implements AutoCloseable {
     }
     @Override public void close() {
         if (closed) return; closed = true; server.stop(1); workers.shutdownNow();
-        heartbeat.shutdownNow(); sessions.values().forEach(session -> session.client.close()); sessions.clear();
+        heartbeat.shutdownNow(); sessions.values().forEach(session -> { session.leaveChat(); session.client.close(); }); sessions.clear();
     }
     private static final class Session {
+        private static final int MAX_CHAT_HISTORY = 200;
         final String id; final UserProfile profile; final SupplyGoTcpClient client; final long createdAt = System.currentTimeMillis();
         volatile long lastAccess;
+        volatile UdpChatClient chatClient;
+        private final ArrayDeque<JsonObject> chatMessages = new ArrayDeque<>();
+        private long chatCursor;
+        volatile long lastChatHeartbeat;
+
         Session(String id, UserProfile profile, SupplyGoTcpClient client, long now) { this.id=id;this.profile=profile;this.client=client;this.lastAccess=now; }
         void touch() { lastAccess=System.currentTimeMillis(); }
+
+        synchronized void rememberChatMessage(UdpChatClient.Message message) {
+            if (chatCursor == Long.MAX_VALUE) return;
+            JsonObject stored = new JsonObject();
+            stored.addProperty("id", ++chatCursor);
+            stored.addProperty("sender", message.sender());
+            stored.addProperty("role", message.role().name());
+            stored.addProperty("text", message.text());
+            stored.addProperty("time", message.time());
+            chatMessages.addLast(stored);
+            while (chatMessages.size() > MAX_CHAT_HISTORY) chatMessages.removeFirst();
+        }
+
+        synchronized JsonObject chatBatch(long after) {
+            JsonArray rows = new JsonArray();
+            long oldest = chatMessages.isEmpty() ? chatCursor + 1 : chatMessages.getFirst().get("id").getAsLong();
+            for (JsonObject message : chatMessages)
+                if (message.get("id").getAsLong() > after) rows.add(message.deepCopy());
+            JsonObject result = new JsonObject();
+            result.add("messages", rows);
+            result.addProperty("cursor", chatCursor);
+            result.addProperty("truncated", after < oldest - 1);
+            return result;
+        }
+
+        synchronized void resetChatHistory() {
+            chatMessages.clear();
+            chatCursor = 0;
+        }
+
+        synchronized void heartbeatChatIfDue() throws IOException {
+            UdpChatClient active = chatClient;
+            long now = System.currentTimeMillis();
+            if (active != null && now - lastChatHeartbeat >= 20_000) {
+                active.heartbeat();
+                lastChatHeartbeat = now;
+            }
+        }
+
+        synchronized void leaveChat() {
+            UdpChatClient active = chatClient;
+            chatClient = null;
+            lastChatHeartbeat = 0;
+            if (active != null) {
+                try { active.leave(); } catch (IOException ignored) { active.close(); }
+            }
+            try { client.closeChat(); } catch (IOException ignored) { }
+        }
     }
     private static final class ApiFailure extends Exception {
         final int status; final String code;
