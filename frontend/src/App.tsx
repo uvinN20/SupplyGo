@@ -13,8 +13,10 @@ import {
     type AuthUser,
     type LiveOrder,
     type OrderStatus,
+    getBusinessProfile,
 } from "./lib/api";
 import {
+    MapPin,
     LayoutDashboard,
     Package,
     ShoppingBag,
@@ -77,6 +79,7 @@ export default function App() {
     const [dashboardOrdersError, setDashboardOrdersError] = useState("");
     const [inventoryLoading, setInventoryLoading] = useState(false);
     const [inventoryError, setInventoryError] = useState("");
+    const [needsBusinessLocation, setNeedsBusinessLocation] = useState(false);
 
     useEffect(() => {
         if (!session) return;
@@ -97,6 +100,23 @@ export default function App() {
             })
             .finally(() => {
                 if (active) setInventoryLoading(false);
+            });
+        return () => {
+            active = false;
+        };
+    }, [session]);
+    useEffect(() => {
+        if (!session || !["Seller", "Supplier"].includes(session.role)) {
+            setNeedsBusinessLocation(false);
+            return;
+        }
+        let active = true;
+        getBusinessProfile()
+            .then((profile) => {
+                if (active) setNeedsBusinessLocation(!profile?.location.trim());
+            })
+            .catch(() => {
+                if (active) setNeedsBusinessLocation(false);
             });
         return () => {
             active = false;
@@ -305,6 +325,20 @@ export default function App() {
                                         : "Dashboard totals and recent orders are loaded from your SupplyGo server."}
                     </span>
                 </div>
+                {needsBusinessLocation && (
+                    <aside className="profile-location-reminder" role="status">
+                        <div>
+                            <span className="profile-location-reminder-icon"><MapPin size={18} /></span>
+                            <p>
+                                <strong>Add your business location</strong>
+                                <span>Complete your profile location so partners know where you operate.</span>
+                            </p>
+                        </div>
+                        <button className="btn subtle" type="button" onClick={() => navigate("Business profiles")}>
+                            Complete profile
+                        </button>
+                    </aside>
+                )}
                 <main id="main-content" className="main-content" tabIndex={-1}>
                     {page === "Dashboard" ? (
                         <Dashboard
@@ -340,7 +374,7 @@ export default function App() {
                     ) : page === "Routes" ? (
                         <Routes role={session.role} />
                     ) : page === "Business profiles" ? (
-                        <BusinessProfiles role={session.role} />
+                        <BusinessProfiles role={session.role} onProfileSaved={(location) => setNeedsBusinessLocation(!location.trim())} />
                     ) : page === "Orders" ? (
                         <Orders
                             session={session}
