@@ -1996,3 +1996,59 @@ select {
     .business-profile-row { flex-wrap: wrap; }
     .profile-row-contact { padding-left: 54px; }
 }
+
+
+.route-planner,
+.route-admin-card,
+.route-network {
+    padding: 24px;
+}
+.route-search-form,
+.route-admin-form {
+    display: flex;
+    align-items: end;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.route-search-form label,
+.route-admin-form label {
+    display: grid;
+    gap: 7px;
+    min-width: 180px;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 650;
+}
+.route-search-form select,
+.route-admin-form input,
+.route-admin-form select {
+    min-height: 42px;
+    padding: 0 12px;
+}
+.route-result {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin-top: 18px;
+    padding: 16px 18px;
+    border: 1px solid rgb(144 210 183 / 55%);
+    border-radius: 16px;
+    color: #245b50;
+    background: rgb(230 248 240 / 75%);
+}
+.route-result strong { color: #173f38; }
+.route-result span { white-space: nowrap; }
+.route-admin-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin: 20px 0;
+}
+.route-admin-card h2 { margin: 0 0 18px; color: var(--ink); }
+.route-network { margin-top: 20px; }
+.route-network-toolbar { margin-bottom: 12px; }
+@media (max-width: 760px) {
+    .route-admin-grid { grid-template-columns: 1fr; }
+    .route-result { align-items: flex-start; flex-direction: column; }
+}

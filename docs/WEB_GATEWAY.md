@@ -51,4 +51,12 @@ Business profile endpoints require an active server session:
 - `GET /api/business-profiles/suppliers?offset=0` and `GET /api/business-profiles/sellers?offset=0` list role-authorized directories in pages of ten.
 - The Java server enforces profile ownership and directory permissions. Profile data is persisted in `data/business-profiles.json`.
 
+Route endpoints require an active server session:
+- `GET /api/routes/locations?offset=0` and `GET /api/routes/roads?offset=0` load the saved network in pages of ten.
+- `POST /api/routes/locations` saves a location with `id` and `name`.
+- `POST /api/routes/roads` saves a two-way road with `from`, `to`, and distance `meters`.
+- `GET /api/routes/shortest?from=ID&to=ID` returns the shortest saved path and its total distance.
+- All signed-in roles can view and search routes. Only Admin and Production Manager can add or update locations and roads; the Java server enforces these permissions.
+- The road network is persisted by the Java server in `data/routes.json`.
+
 Self-service account creation allows only supplier and seller roles. Admin and manager accounts must be provisioned by an operator through the existing Java account management command.

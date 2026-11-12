@@ -36,6 +36,7 @@ import Login from "./features/Login";
 import Dashboard from "./features/Dashboard";
 import Inventory from "./features/Inventory";
 import BusinessProfiles from "./features/BusinessProfiles";
+import Routes from "./features/Routes";
 import {
     type Product,
 } from "./lib/demo";
@@ -44,7 +45,7 @@ const navigation: { name: string; icon: LucideIcon; phase?: string }[] = [
     { name: "Inventory", icon: Package },
     { name: "Orders", icon: ShoppingBag },
     { name: "Business profiles", icon: Users },
-    { name: "Routes", icon: Route, phase: "Phase 7" },
+    { name: "Routes", icon: Route },
     { name: "Chat", icon: MessageCircle, phase: "Phase 8" },
 ];
 export default function App() {
@@ -219,7 +220,7 @@ export default function App() {
                         <p>
                             You’re exploring the web preview.
                             <br />
-                            Dashboard, Inventory, Orders and Business profiles are connected to your SupplyGo server. Routes and chat are planned.
+                            Dashboard, Inventory, Orders, Business profiles and Routes are connected to your SupplyGo server. Chat is planned.
                         </p>
                         <button onClick={() => navigate("About preview")}>
                             About this preview <ArrowUpRight size={15} />
@@ -270,7 +271,7 @@ export default function App() {
                     </div>
                     <div className="topbar-right">
                         <span className="demo-badge">
-                            <span className="tiny-dot" /> {["Inventory", "Orders", "Dashboard", "Business profiles"].includes(page) ? "Live server data" : "Demo data"}
+                            <span className="tiny-dot" /> {["Inventory", "Orders", "Dashboard", "Business profiles", "Routes"].includes(page) ? "Live server data" : "Demo data"}
                         </span>
                         <div className="user-summary">
                             <span className="avatar">
@@ -294,7 +295,9 @@ export default function App() {
                                 ? "Orders are loaded from your SupplyGo server. Actions update the server and stock."
                                 : page === "Business profiles"
                                     ? "Profile details and role-based directories are loaded from your SupplyGo server."
-                                    : dashboardOrdersError
+                                    : page === "Routes"
+                                        ? "Locations and roads are loaded from your SupplyGo server."
+                                        : dashboardOrdersError
                                         ? dashboardOrdersError
                                         : "Dashboard totals and recent orders are loaded from your SupplyGo server."}
                     </span>
@@ -331,6 +334,8 @@ export default function App() {
                                 }
                             }}
                         />
+                    ) : page === "Routes" ? (
+                        <Routes role={session.role} />
                     ) : page === "Business profiles" ? (
                         <BusinessProfiles role={session.role} />
                     ) : page === "Orders" ? (

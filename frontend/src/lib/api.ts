@@ -167,6 +167,75 @@ export async function listBusinessProfiles(
     return { profiles: body.profiles.map(profileFromApi), nextOffset: body.nextOffset };
 }
 
+export type RouteLocation = { id: string; name: string };
+export type RouteRoad = { from: string; to: string; meters: number };
+export type ShortestRoute = { path: string[]; meters: number };
+
+export async function listRouteLocations(): Promise<RouteLocation[]> {
+    const all: RouteLocation[] = [];
+    let offset = 0;
+    for (let page = 0; page < 10; page++) {
+        const body = await readData<{ locations: RouteLocation[]; nextOffset: number }>(
+            await request(`/api/routes/locations?offset=${offset}`),
+        );
+        if (!Array.isArray(body.locations) || !Number.isInteger(body.nextOffset))
+            throw new Error("SupplyGo returned invalid route locations.");
+        all.push(...body.locations);
+        if (body.nextOffset < 0) return all;
+        if (body.nextOffset <= offset || body.nextOffset > 1000)
+            throw new Error("SupplyGo returned invalid route pagination.");
+        offset = body.nextOffset;
+    }
+    throw new Error("SupplyGo returned too many location pages.");
+}
+
+export async function listRouteRoads(): Promise<RouteRoad[]> {
+    const all: RouteRoad[] = [];
+    let offset = 0;
+    for (let page = 0; page < 100; page++) {
+        const body = await readData<{ roads: RouteRoad[]; nextOffset: number }>(
+            await request(`/api/routes/roads?offset=${offset}`),
+        );
+        if (!Array.isArray(body.roads) || !Number.isInteger(body.nextOffset))
+            throw new Error("SupplyGo returned invalid road data.");
+        all.push(...body.roads);
+        if (body.nextOffset < 0) return all;
+        if (body.nextOffset <= offset || body.nextOffset > 1000)
+            throw new Error("SupplyGo returned invalid route pagination.");
+        offset = body.nextOffset;
+    }
+    throw new Error("SupplyGo returned too many road pages.");
+}
+
+export async function saveRouteLocation(id: string, name: string): Promise<void> {
+    await readData<{ status: string }>(
+        await request("/api/routes/locations", {
+            method: "POST",
+            headers: csrfHeaders,
+            body: JSON.stringify({ id, name: name.trim() }),
+        }),
+    );
+}
+
+export async function saveRouteRoad(from: string, to: string, meters: number): Promise<void> {
+    await readData<{ status: string }>(
+        await request("/api/routes/roads", {
+            method: "POST",
+            headers: csrfHeaders,
+            body: JSON.stringify({ from, to, meters }),
+        }),
+    );
+}
+
+export async function findShortestRoute(from: string, to: string): Promise<ShortestRoute> {
+    const body = await readData<{ route: ShortestRoute }>(
+        await request(`/api/routes/shortest?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+    );
+    if (!Array.isArray(body.route?.path) || !Number.isSafeInteger(body.route.meters))
+        throw new Error("SupplyGo returned an invalid route result.");
+    return body.route;
+}
+
 export async function listInventory(): Promise<Product[]> {
     const body = await readData<InventoryResponse>(
         await request("/api/inventory"),
