@@ -38,7 +38,6 @@ import Inventory from "./features/Inventory";
 import {
     initialProducts,
     type Product,
-    type Role,
 } from "./lib/demo";
 const navigation: { name: string; icon: LucideIcon; phase?: string }[] = [
     { name: "Dashboard", icon: LayoutDashboard },
