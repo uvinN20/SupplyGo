@@ -18,6 +18,8 @@ export default function Chat() {
     const [error, setError] = useState("");
     const cursor = useRef(0);
     const endOfMessages = useRef<HTMLDivElement>(null);
+    const joinedRef = useRef(joined);
+    joinedRef.current = joined;
 
     useEffect(() => {
         if (!joined) return;
@@ -56,8 +58,12 @@ export default function Chat() {
     }, [joined]);
 
     useEffect(() => {
-        endOfMessages.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+        endOfMessages.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
     }, [messages]);
+
+    useEffect(() => () => {
+        if (joinedRef.current) void leaveChat().catch(() => undefined);
+    }, []);
 
     async function handleJoin() {
         setJoining(true);
