@@ -1,6 +1,8 @@
-# SupplyGo web preview — Phase 1
+# SupplyGo web application
 
-A React + TypeScript + Vite browser interface for reviewing SupplyGo's Apple-inspired liquid-glass visual direction, with frosted panels, rounded widgets, layered colour and gentle motion. This preview uses local sample data. It does **not** authenticate users or call the Java server, TCP service, UDP chat or production repositories.
+A React + TypeScript + Vite browser app connected to the Java server through the local HTTP gateway. Authentication, inventory, orders, business profiles, routes and shared-room chat use live server data. The dashboard includes live inventory and order summaries. Some other workspace screens may still contain preview/sample content; check the in-app status banners.
+
+The browser does not connect directly to the TCP/TLS or UDP ports. The gateway owns the authenticated server connection, and bridges browser chat requests to the UDP chat service.
 
 ## Start on Windows
 
@@ -8,13 +10,13 @@ Use Node.js 22.12+ (Node 24 is suitable). From the SupplyGo repository:
 
 ```powershell
 git fetch origin
-git switch feature/web-ui-preview
+git switch main
 cd frontend
 npm ci
 npm run dev
 ```
 
-Open the **Local** URL printed by Vite (normally http://localhost:5173). Enter a display name, choose a preview role and click **Explore your workspace**. No password, TLS certificate, Java server or Maven build is needed for this design preview. Stop with Ctrl+C. If PowerShell blocks npm.ps1, use `npm.cmd` in place of `npm` or run the commands in Command Prompt.
+First start the TLS TCP server and HTTP gateway using [the gateway setup guide](../docs/WEB_GATEWAY.md). Then open the **Local** URL printed by Vite (normally http://localhost:5173), register or sign in, and keep all three terminals open. Stop each process with Ctrl+C. If PowerShell blocks npm.ps1, use `npm.cmd` or Command Prompt.
 
 For a completed production build preview:
 
@@ -28,16 +30,17 @@ Open the URL printed by the preview command. The dev/preview scripts bind to all
 ## Try the design
 
 - Welcome: editable display name and role; no real credentials collected.
-- Dashboard: totals calculated from sample inventory, sample orders, stock alerts and an illustrative weekly order-volume chart. No revenue or live delivery statistics are implied.
-- Inventory: search across all samples, category/stock filters, five-row pagination, empty results, and sample-product creation for Admin/Production Manager previews. Duplicate IDs and invalid values are rejected.
-- Orders: read-only samples with status and text filtering.
-- Business profiles, Routes and Chat: clearly labelled planned destinations, not implemented web features.
-- Leave preview: returns to the welcome page and resets sample edits. Reload also resets everything; there is no local storage or server persistence.
+- Dashboard: live inventory and order summaries; no revenue or live delivery statistics are implied.
+- Inventory: live products and stock actions saved by the Java server.
+- Orders: live order creation, approval, cancellation and fulfilment, with stock reservation/consumption handled by the server.
+- Business profiles: live profile editing and role-scoped directories.
+- Routes: saved server locations and roads, plus shortest-route lookup.
+- Chat: a shared, temporary room bridged by the gateway to UDP. Messages are best-effort and not encrypted; do not send sensitive information.
 - At narrow widths, use the navigation menu. Wide tables scroll horizontally. Reduced-motion preferences disable decorative motion.
 
-Role selection is a **design demonstration**, not access control. All records are synthetic and all roles can view those samples. Real session isolation, role-scoped records and server-side authorization belong to Phase 2 and subsequent feature integrations.
+The server enforces authentication, session isolation and role-based authorization. Some preview-only screens or sample content remain clearly labelled in the app.
 
-Sample inventory uses categories and a low-stock threshold of 50 solely for the visual preview. These fields/rules are not part of the existing Java schema yet. API integration must map supported fields explicitly or add reviewed server changes.
+The web app uses the Java server's supported inventory, order, profile and route fields. The low-stock indicator is a UI threshold and does not change backend stock rules.
 
 ## Checks
 
@@ -46,16 +49,16 @@ npm test
 npm run build
 ```
 
-Tests cover preview entry/exit, cross-page search and combined filters, duplicate IDs, sample reset, role-dependent editing controls, order filtering and derived totals. Dependencies are pinned with package-lock.json; use npm ci for reproducible installs. The Java backend is unchanged in this branch.
+The frontend tests cover authentication preview flows, search, registration, order filters and totals. Run the Java verification from the repository root as well. Dependencies are pinned with package-lock.json; use npm ci for reproducible installs.
 
 ## Structure
 
-- `src/features/`: Welcome, Dashboard and Inventory screens.
-- `src/components/`: brand and original SVG illustration.
-- `src/lib/demo.ts`: typed sample fixtures and filter/summary functions.
-- `src/styles/main.css`: shared theme, responsive layout and reduced-motion rules.
-- `src/App.tsx`: preview navigation, sample Orders and planned-feature pages.
+- `src/features/`: Dashboard, Inventory, Orders, Business Profiles, Routes and Chat screens.
+- `src/lib/api.ts`: typed browser API client for the gateway.
+- `src/lib/demo.ts`: sample fixtures used only in preview areas.
+- `src/styles/main.css`: shared theme and responsive layout.
+- `src/App.tsx`: session restoration, navigation and live data integration.
 
-## Next milestone
+## Current scope
 
-Review the appearance on your Windows browser first. Phase 2 adds a Java HTTP gateway, real login and cookie-backed browser sessions, with per-user TCP/TLS connections to the existing backend. Chat later uses a WebSocket-to-UDP bridge. The current browser preview has no such connections.
+The web app is still under development. Run the server, gateway and frontend locally, verify the screens and workflows on your Windows browser, and run the checks before merging feature changes. Chat uses a gateway REST polling bridge to the existing UDP service (not WebSocket).
