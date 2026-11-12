@@ -10,7 +10,7 @@ export type Role = (typeof roles)[number];
 export type Product = {
     id: string;
     name: string;
-    category: "Tropical" | "Citrus" | "Other";
+    category: "Tropical" | "Citrus" | "Other" | "Uncategorized";
     available: number;
     reserved: number;
     symbol: string;

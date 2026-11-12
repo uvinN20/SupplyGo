@@ -11,6 +11,8 @@ const api = vi.hoisted(() => ({
     signIn: vi.fn(),
     signOut: vi.fn(),
     createAccount: vi.fn(),
+    listInventory: vi.fn(),
+    createInventoryProduct: vi.fn(),
 }));
 vi.mock("./lib/api", () => api);
 
@@ -31,6 +33,8 @@ async function enter(role = "Admin") {
     api.currentSession.mockResolvedValue(null);
     api.signIn.mockResolvedValue({ username: role.toLowerCase(), role });
     api.signOut.mockResolvedValue(undefined);
+    api.listInventory.mockResolvedValue(initialProducts);
+    api.createInventoryProduct.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<App />);
     const username = await screen.findByLabelText("Username");
@@ -49,6 +53,7 @@ describe("Authenticated web preview", () => {
             username: "yasiru",
             role: "Admin",
         });
+        api.listInventory.mockResolvedValue(initialProducts);
         render(<App />);
         expect(await screen.findByText("yasiru")).toBeInTheDocument();
         expect(
@@ -63,7 +68,11 @@ describe("Authenticated web preview", () => {
             "admin",
             "a strong test password",
         );
-        expect(screen.getByText(/sample data/)).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /Workspace content and actions below are sample data/,
+            ),
+        ).toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Sign out" }));
         expect(api.signOut).toHaveBeenCalledOnce();
         expect(

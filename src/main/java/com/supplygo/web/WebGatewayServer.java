@@ -1,5 +1,6 @@
 package com.supplygo.web;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.sun.net.httpserver.HttpExchange;
@@ -81,6 +82,9 @@ public final class WebGatewayServer implements AutoCloseable {
                 if (path.equals("/api/accounts") && method.equals("POST")) { requireBrowserRequest(exchange); register(exchange); return; }
                 if (path.equals("/api/session") && method.equals("GET")) { getSession(exchange); return; }
                 if (path.equals("/api/session") && method.equals("DELETE")) { requireBrowserRequest(exchange); logout(exchange); return; }
+                if (path.equals("/api/inventory") && method.equals("GET")) { listInventory(exchange); return; }
+                if (path.equals("/api/inventory/products") && method.equals("POST")) { requireBrowserRequest(exchange); createProduct(exchange); return; }
+                if (path.equals("/api/inventory/stock") && method.equals("POST")) { requireBrowserRequest(exchange); changeStock(exchange); return; }
                 sendError(exchange, 404, "NOT_FOUND", "Endpoint not found");
             } catch (ApiFailure failure) {
                 sendError(exchange, failure.status, failure.code, failure.getMessage());
@@ -133,9 +137,95 @@ public final class WebGatewayServer implements AutoCloseable {
         } finally { Arrays.fill(password, '\0'); }
     }
 
-    private void getSession(HttpExchange exchange) throws IOException, ApiFailure {
+    private void listInventory(HttpExchange exchange) throws IOException, ApiFailure {
+        Session session = requireSession(exchange);
+        int offset = 0;
+        JsonArray products = new JsonArray();
+        try {
+            do {
+                JsonObject page = session.client.inventoryPage(false, offset);
+                JsonArray rows = page.getAsJsonArray("products");
+                if (rows == null) throw new IOException("Invalid inventory response");
+                rows.forEach(row -> products.add(row.deepCopy()));
+                int next = page.get("nextOffset").getAsInt();
+                if (next < 0) break;
+                if (next <= offset || next > 10000) throw new IOException("Invalid inventory pagination");
+                offset = next;
+            } while (products.size() <= 1000);
+            JsonObject response = new JsonObject();
+            response.add("products", products);
+            send(exchange, 200, response);
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "INVENTORY_SERVICE_UNAVAILABLE", "Could not load inventory from the SupplyGo server");
+        }
+    }
+
+    private void createProduct(HttpExchange exchange) throws IOException, ApiFailure {
+        JsonObject body = requestBody(exchange, Set.of("id", "name", "quantity"));
+        String id = requiredText(body, "id", 1, 24).toUpperCase(java.util.Locale.ROOT);
+        String name = requiredText(body, "name", 1, 60);
+        int quantity = requiredQuantity(body);
+        Session session = requireSession(exchange);
+        try {
+            session.client.createProduct(id, name);
+            if (quantity > 0) session.client.changeStock(true, id, quantity);
+            send(exchange, 201, json("status", "created"));
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "INVENTORY_SERVICE_UNAVAILABLE", "Could not save the product to the SupplyGo server");
+        }
+    }
+
+    private void changeStock(HttpExchange exchange) throws IOException, ApiFailure {
+        JsonObject body = requestBody(exchange, Set.of("productId", "quantity", "action"));
+        String productId = requiredText(body, "productId", 1, 24).toUpperCase(java.util.Locale.ROOT);
+        String action = requiredText(body, "action", 1, 16);
+        if (!action.equals("receive") && !action.equals("withdraw"))
+            throw new ApiFailure(400, "INVALID_REQUEST", "Stock action must be receive or withdraw");
+        int quantity = requiredQuantity(body);
+        Session session = requireSession(exchange);
+        try {
+            session.client.changeStock(action.equals("receive"), productId, quantity);
+            send(exchange, 200, json("status", "updated"));
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "INVENTORY_SERVICE_UNAVAILABLE", "Could not update stock on the SupplyGo server");
+        }
+    }
+
+    private static int requiredQuantity(JsonObject body) throws ApiFailure {
+        if (!(body.get("quantity") instanceof JsonPrimitive value) || !value.isNumber())
+            throw new ApiFailure(400, "INVALID_REQUEST", "quantity must be a whole number");
+        String text = value.getAsString();
+        if (!text.matches("0|[1-9][0-9]{0,6}"))
+            throw new ApiFailure(400, "INVALID_REQUEST", "quantity must be a whole number from 0 to 1000000");
+        int quantity = Integer.parseInt(text);
+        if (quantity > 1_000_000)
+            throw new ApiFailure(400, "INVALID_REQUEST", "quantity must be a whole number from 0 to 1000000");
+        return quantity;
+    }
+
+    private Session requireSession(HttpExchange exchange) throws ApiFailure {
         Session session = findSession(exchange);
         if (session == null) { clearCookie(exchange); throw new ApiFailure(401, "UNAUTHENTICATED", "Sign in to continue"); }
+        return session;
+    }
+
+    private static ApiFailure rejectedFailure(ServerRejectedException rejected) {
+        int status = switch (rejected.code()) {
+            case "AUTH_REQUIRED" -> 401;
+            case "FORBIDDEN" -> 403;
+            default -> 400;
+        };
+        return new ApiFailure(status, rejected.code(), rejected.getMessage());
+    }
+
+    private void getSession(HttpExchange exchange) throws IOException, ApiFailure {
+        Session session = requireSession(exchange);
         session.touch(); setCookie(exchange, session.id, remainingIdle(session)); send(exchange, 200, profileJson(session.profile));
     }
 

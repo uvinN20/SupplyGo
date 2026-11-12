@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
     Plus,
+    Minus,
     Search,
     SlidersHorizontal,
     X,
     Package,
     ChevronLeft,
     ChevronRight,
-    RotateCcw,
 } from "lucide-react";
 import {
     canEdit,
@@ -20,13 +20,21 @@ import {
 export default function Inventory({
     products,
     role,
+    loading,
+    error,
     onAdd,
-    onReset,
+    onStockChange,
 }: {
     products: Product[];
     role: Role;
-    onAdd: (p: Product) => void;
-    onReset: () => void;
+    loading: boolean;
+    error: string;
+    onAdd: (p: Product) => Promise<void>;
+    onStockChange: (
+        productId: string,
+        quantity: number,
+        action: "receive" | "withdraw",
+    ) => Promise<void>;
 }) {
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All categories");
@@ -34,6 +42,11 @@ export default function Inventory({
     const [page, setPage] = useState(0);
     const [adding, setAdding] = useState(false);
     const [notice, setNotice] = useState("");
+    const [stockEdit, setStockEdit] = useState<{
+        id: string;
+        name: string;
+        action: "receive" | "withdraw";
+    } | null>(null);
     const filtered = filterProducts(products, query, category, status);
     const totalPages = Math.max(1, Math.ceil(filtered.length / 5));
     const safePage = Math.min(page, totalPages - 1);
@@ -53,7 +66,7 @@ export default function Inventory({
                         className="btn primary"
                         onClick={() => setAdding(true)}
                     >
-                        <Plus size={18} /> Add sample product
+                        <Plus size={18} /> Add product
                     </button>
                 )}
             </div>
@@ -70,17 +83,9 @@ export default function Inventory({
                 <span>
                     <strong>{m.reserved}</strong> reserved units
                 </span>
-                <button
-                    className="text-button"
-                    onClick={() => {
-                        onReset();
-                        setNotice("Sample inventory reset.");
-                        setPage(0);
-                    }}
-                >
-                    <RotateCcw size={14} /> Reset demo
-                </button>
             </div>
+            {loading && <p className="read-only-note" role="status">Loading inventory from the SupplyGo server…</p>}
+            {error && <p className="auth-error" role="alert">{error}</p>}
             <section className="surface">
                 <div className="inventory-toolbar">
                     <div className="search-input">
@@ -107,9 +112,7 @@ export default function Inventory({
                         >
                             {[
                                 "All categories",
-                                "Tropical",
-                                "Citrus",
-                                "Other",
+                                "Uncategorized",
                             ].map((c) => (
                                 <option key={c}>{c}</option>
                             ))}
@@ -143,6 +146,7 @@ export default function Inventory({
                                 <th>Reserved</th>
                                 <th>Available</th>
                                 <th>Status</th>
+                                {canEdit(role) && <th>Stock actions</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -181,6 +185,40 @@ export default function Inventory({
                                                 {stockState(p)}
                                             </span>
                                         </td>
+                                        {canEdit(role) && (
+                                            <td>
+                                                <div className="filters">
+                                                    <button
+                                                        className="icon-btn"
+                                                        aria-label={`Receive stock for ${p.name}`}
+                                                        title="Receive stock"
+                                                        onClick={() =>
+                                                            setStockEdit({
+                                                                id: p.id,
+                                                                name: p.name,
+                                                                action: "receive",
+                                                            })
+                                                        }
+                                                    >
+                                                        <Plus size={16} />
+                                                    </button>
+                                                    <button
+                                                        className="icon-btn"
+                                                        aria-label={`Withdraw stock for ${p.name}`}
+                                                        title="Withdraw stock"
+                                                        onClick={() =>
+                                                            setStockEdit({
+                                                                id: p.id,
+                                                                name: p.name,
+                                                                action: "withdraw",
+                                                            })
+                                                        }
+                                                    >
+                                                        <Minus size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                         </tbody>
@@ -211,7 +249,7 @@ export default function Inventory({
                         {filtered.length === 0
                             ? "0"
                             : `${safePage * 5 + 1}–${Math.min(safePage * 5 + 5, filtered.length)}`}{" "}
-                        of {filtered.length} sample products
+                        of {filtered.length} products
                     </span>
                     <div>
                         <button
@@ -237,33 +275,47 @@ export default function Inventory({
                 </div>
             </section>
             <p className="footnote">
-                Demo quantities are whole fruit units. Low stock means fewer
-                than 50 available units in this preview. Changes stay in this
-                tab and reset when you leave the preview or reload.
+                Quantities are whole fruit units. Low stock means fewer than
+                50 available units. Inventory changes are saved by the SupplyGo server.
             </p>
             {!canEdit(role) && (
                 <p className="read-only-note">
-                    {role} preview: inventory browsing only. Editing is shown
-                    for Admin and Production Manager roles.
+                    {role}: inventory browsing only. Editing is available
+                    to Admin and Production Manager roles.
                 </p>
             )}
             <p role="status" className="notice">
                 {notice}
             </p>
+            {stockEdit && (
+                <StockChange
+                    product={stockEdit}
+                    onClose={() => setStockEdit(null)}
+                    onSave={async (quantity) => {
+                        await onStockChange(
+                            stockEdit.id,
+                            quantity,
+                            stockEdit.action,
+                        );
+                        setStockEdit(null);
+                        setNotice(
+                            `Stock was ${stockEdit.action === "receive" ? "received" : "withdrawn"} for ${stockEdit.name}.`,
+                        );
+                    }}
+                />
+            )}
             {adding && (
                 <AddProduct
                     products={products}
                     onClose={() => setAdding(false)}
-                    onSave={(p) => {
-                        onAdd(p);
+                    onSave={async (p) => {
+                        await onAdd(p);
                         setAdding(false);
                         setQuery("");
                         setCategory("All categories");
                         setStatus("All stock");
                         setPage(Math.floor(products.length / 5));
-                        setNotice(
-                            `${p.name} added to the sample inventory. Nothing was sent to the backend.`,
-                        );
+                        setNotice(`${p.name} was saved to the SupplyGo server.`);
                     }}
                 />
             )}{" "}
@@ -277,7 +329,7 @@ function AddProduct({
 }: {
     products: Product[];
     onClose: () => void;
-    onSave: (p: Product) => void;
+    onSave: (p: Product) => Promise<void>;
 }) {
     const dialog = useRef<HTMLDialogElement>(null);
     const [error, setError] = useState("");
@@ -286,7 +338,7 @@ function AddProduct({
         element?.showModal();
         return () => element?.close();
     }, []);
-    function save(e: FormEvent<HTMLFormElement>) {
+    async function save(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
         const id = String(data.get("id")).trim().toUpperCase();
@@ -295,7 +347,7 @@ function AddProduct({
         if (
             !/^[A-Z0-9_-]{1,24}$/.test(id) ||
             !name ||
-            name.length > 64 ||
+            name.length > 60 ||
             !Number.isInteger(available) ||
             available < 0 ||
             available > 1_000_000
@@ -309,15 +361,23 @@ function AddProduct({
             setError("That product ID already exists. Choose a different ID.");
             return;
         }
-        onSave({
-            id,
-            name,
-            available,
-            category: String(data.get("category")) as Product["category"],
-            reserved: 0,
-            symbol: "📦",
-            tone: "mint",
-        });
+        try {
+            await onSave({
+                id,
+                name,
+                available,
+                category: "Uncategorized",
+                reserved: 0,
+                symbol: "📦",
+                tone: "mint",
+            });
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "Could not save the product.",
+            );
+        }
     }
     return (
         <dialog
@@ -331,8 +391,8 @@ function AddProduct({
             <form onSubmit={save}>
                 <div className="section-heading">
                     <div>
-                        <span className="mini-label">PREVIEW ONLY</span>
-                        <h2 id="add-title">Add a sample product</h2>
+                        <span className="mini-label">SERVER INVENTORY</span>
+                        <h2 id="add-title">Add product</h2>
                     </div>
                     <button
                         type="button"
@@ -344,7 +404,7 @@ function AddProduct({
                     </button>
                 </div>
                 <p className="muted">
-                    Try the workflow. This does not create real stock.
+                    Create a product and save its opening stock to the server.
                 </p>
                 <label htmlFor="product-id">Product ID</label>
                 <input
@@ -360,34 +420,20 @@ function AddProduct({
                     id="product-name"
                     name="name"
                     required
-                    maxLength={64}
+                    maxLength={60}
                     placeholder="Fresh papaya"
                 />
-                <div className="form-grid">
-                    <div>
-                        <label htmlFor="product-category">Category</label>
-                        <select id="product-category" name="category">
-                            <option>Tropical</option>
-                            <option>Citrus</option>
-                            <option>Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="product-quantity">
-                            Available units
-                        </label>
-                        <input
-                            id="product-quantity"
-                            name="quantity"
-                            type="number"
-                            min="0"
-                            max="1000000"
-                            step="1"
-                            defaultValue="0"
-                            required
-                        />
-                    </div>
-                </div>
+                <label htmlFor="product-quantity">Opening stock (whole units)</label>
+                <input
+                    id="product-quantity"
+                    name="quantity"
+                    type="number"
+                    min="0"
+                    max="1000000"
+                    step="1"
+                    defaultValue="0"
+                    required
+                />
                 <p role="alert" className="error">
                     {error}
                 </p>
@@ -400,7 +446,91 @@ function AddProduct({
                         Cancel
                     </button>
                     <button className="btn primary" type="submit">
-                        Add sample product
+                        Save product
+                    </button>
+                </div>
+            </form>
+        </dialog>
+    );
+}
+
+function StockChange({
+    product,
+    onClose,
+    onSave,
+}: {
+    product: { id: string; name: string; action: "receive" | "withdraw" };
+    onClose: () => void;
+    onSave: (quantity: number) => Promise<void>;
+}) {
+    const dialog = useRef<HTMLDialogElement>(null);
+    const [error, setError] = useState("");
+    const [saving, setSaving] = useState(false);
+    useEffect(() => {
+        const element = dialog.current;
+        element?.showModal();
+        return () => element?.close();
+    }, []);
+    async function save(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const quantity = Number(form.get("quantity"));
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1_000_000) {
+            setError("Enter a whole quantity from 1 to 1000000.");
+            return;
+        }
+        setSaving(true);
+        setError("");
+        try {
+            await onSave(quantity);
+        } catch (failure) {
+            setError(
+                failure instanceof Error
+                    ? failure.message
+                    : "Could not update stock.",
+            );
+        } finally {
+            setSaving(false);
+        }
+    }
+    const receiving = product.action === "receive";
+    return (
+        <dialog ref={dialog} aria-labelledby="stock-title">
+            <form onSubmit={save}>
+                <div className="section-heading">
+                    <div>
+                        <span className="mini-label">SERVER INVENTORY</span>
+                        <h2 id="stock-title">{receiving ? "Receive stock" : "Withdraw stock"}</h2>
+                    </div>
+                    <button
+                        type="button"
+                        className="icon-btn"
+                        aria-label="Close stock form"
+                        onClick={onClose}
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+                <p className="muted">{product.name} · {product.id}</p>
+                <label htmlFor="stock-quantity">Quantity (whole units)</label>
+                <input
+                    autoFocus
+                    id="stock-quantity"
+                    name="quantity"
+                    type="number"
+                    min="1"
+                    max="1000000"
+                    step="1"
+                    defaultValue="1"
+                    required
+                />
+                <p role="alert" className="error">{error}</p>
+                <div className="modal-actions">
+                    <button type="button" className="btn white" onClick={onClose}>
+                        Cancel
+                    </button>
+                    <button className="btn primary" type="submit" disabled={saving}>
+                        {saving ? "Saving…" : receiving ? "Receive stock" : "Withdraw stock"}
                     </button>
                 </div>
             </form>
