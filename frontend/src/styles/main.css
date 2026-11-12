@@ -2309,3 +2309,280 @@ select {
     .chat-info-card { padding: 19px; }
 }
 
+/* UI/UX polish: preserve the existing modules and their behavior. */
+:root {
+    --ui-text: #203147;
+    --ui-muted: #657991;
+    --ui-border: #e2e9f1;
+    --ui-surface: rgb(255 255 255 / 94%);
+    --ui-card-shadow: 0 14px 38px rgb(34 58 82 / 7%);
+    --ui-focus: 0 0 0 4px rgb(11 155 145 / 15%);
+}
+
+body {
+    color: var(--ui-text);
+    background:
+        radial-gradient(ellipse at 12% 12%, rgb(211 240 235 / 45%), transparent 34rem),
+        radial-gradient(ellipse at 88% 5%, rgb(224 229 251 / 48%), transparent 38rem),
+        #f4f7fb;
+}
+
+.app-main {
+    min-height: 100dvh;
+    background: transparent;
+}
+
+.topbar {
+    background: rgb(255 255 255 / 92%);
+    backdrop-filter: blur(14px);
+}
+
+.main-content {
+    padding: clamp(24px, 3vw, 42px);
+}
+
+.page-heading {
+    margin-bottom: 30px;
+}
+
+.page-heading h1 {
+    font-size: clamp(1.8rem, 2.3vw, 2.15rem);
+    line-height: 1.18;
+}
+
+.page-heading p {
+    color: var(--ui-muted);
+    font-size: 0.94rem;
+    line-height: 1.65;
+}
+
+.mini-label {
+    font-size: 0.7rem;
+}
+
+.nav-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+}
+
+.nav-item {
+    min-height: 46px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+}
+
+.nav-item:focus-visible,
+.sidebar button:focus-visible {
+    outline: 3px solid #4ed2bd;
+    outline-offset: 2px;
+}
+
+.surface,
+.chat-panel,
+.chat-info-card,
+.route-planner,
+.route-admin-card,
+.route-network,
+.business-profile-card {
+    border-radius: 18px;
+    box-shadow: var(--ui-card-shadow);
+}
+
+.section-heading {
+    padding: 22px 24px;
+}
+
+.section-heading h2 {
+    font-size: 1.05rem;
+}
+
+.section-heading p {
+    color: var(--ui-muted);
+    font-size: 0.82rem;
+    line-height: 1.55;
+}
+
+table {
+    color: var(--ui-text);
+    font-size: 0.84rem;
+}
+
+th {
+    color: #667a91;
+    font-size: 0.72rem;
+    letter-spacing: 0.025em;
+    padding-block: 14px;
+}
+
+td {
+    color: #536981;
+    padding-block: 17px;
+}
+
+td strong {
+    font-size: 0.86rem;
+}
+
+label,
+.route-search-form label,
+.route-admin-form label {
+    color: #2f4359;
+    font-size: 0.88rem;
+}
+
+input,
+select {
+    min-height: 46px;
+    border-color: var(--ui-border);
+    border-radius: 12px;
+}
+
+input::placeholder {
+    color: #8191a5;
+    opacity: 1;
+}
+
+input:focus,
+select:focus {
+    box-shadow: var(--ui-focus);
+}
+
+.btn {
+    min-height: 44px;
+    border-radius: 12px;
+    font-size: 0.88rem;
+}
+
+.btn.primary {
+    background: linear-gradient(110deg, #0b9a8b, #087f91);
+    box-shadow: 0 8px 20px rgb(7 142 130 / 17%);
+}
+
+.btn.primary:hover:not(:disabled) {
+    filter: brightness(0.96);
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    opacity: 0.56;
+}
+
+.text-button {
+    min-height: 40px;
+    font-size: 0.82rem;
+}
+
+.icon-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+}
+
+.preview-pill {
+    font-size: 0.78rem;
+}
+
+.chat-message-meta {
+    font-size: 0.78rem;
+}
+
+.chat-message-meta strong {
+    font-size: 0.88rem;
+}
+
+.chat-status,
+.chat-error,
+.chat-info-card p,
+.chat-info-card li {
+    font-size: 0.9rem;
+    line-height: 1.65;
+}
+
+.route-result {
+    font-size: 0.95rem;
+}
+
+@media (max-width: 760px) {
+    .main-content {
+        padding: 22px 18px 30px;
+    }
+
+    .topbar {
+        padding-inline: 16px;
+    }
+
+    .page-heading {
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 22px;
+    }
+
+    .page-heading h1 {
+        font-size: clamp(1.65rem, 6vw, 2rem);
+    }
+
+    .page-heading p {
+        font-size: 0.9rem;
+    }
+
+    .page-heading > .btn {
+        min-height: 44px;
+        font-size: 0.82rem;
+        padding: 10px 13px;
+    }
+
+    .section-heading {
+        padding: 18px;
+    }
+
+    .nav-item {
+        min-height: 48px;
+    }
+
+    .chat-panel,
+    .chat-info-card,
+    .route-planner,
+    .route-admin-card,
+    .route-network {
+        border-radius: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding-inline: 14px;
+    }
+
+    .page-heading {
+        flex-wrap: wrap;
+    }
+
+    .page-heading > .btn {
+        width: 100%;
+    }
+
+    .section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .btn {
+        white-space: normal;
+    }
+
+    .route-search-form label,
+    .route-admin-form label {
+        min-width: min(100%, 220px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
