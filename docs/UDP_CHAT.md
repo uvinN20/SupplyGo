@@ -1,6 +1,6 @@
 # UDP messenger
 
-SupplyGo has one shared chat room for all six signed-in roles. The Swing client uses real UDP datagrams for chat; accounts, inventory, orders and profile changes remain on TCP/TLS.
+SupplyGo has one shared chat room for all six signed-in roles. The Swing client sends real UDP datagrams. The web client uses the authenticated Java Web Gateway, which keeps the short-lived grant and bridges browser requests to the same UDP room; the browser never opens a UDP socket. Accounts, inventory, orders and profile changes remain on TCP/TLS.
 
 ## Run and demonstrate
 
@@ -9,6 +9,8 @@ SupplyGo has one shared chat room for all six signed-in roles. The Swing client 
 3. Open **Chat**, choose **Join room**, and send a message. Each joined participant, including the sender, sees the server-assigned username, role and UTC time.
 4. Choose **Leave** to exit the room while remaining signed in. **Join room** creates fresh chat access. Signing out or disconnecting also closes chat and clears the local history.
 5. Close and reopen a client to demonstrate reconnection. No old messages are restored.
+
+The browser Chat page must be open while signed in. Choose **Join room** to connect, send a message, and use **Leave room** or navigate away to disconnect. It polls the authenticated gateway for new messages. Like the desktop client, the web view does not restore old messages after leaving.
 
 For a LAN demonstration set `-Dsupplygo.server.bind=0.0.0.0` on the server and use the server's LAN address in the client. Its TLS certificate must contain that address or DNS name. Allow inbound TCP 7070 and UDP 7071 through the server firewall for your test network. The server advertises its UDP port over TLS, so clients do not need a separate port field. Change it on the server with `-Dsupplygo.udp.port=7072` if needed. Port forwarding must preserve that advertised UDP port; the TCP and UDP client traffic must arrive from the same IP address.
 
