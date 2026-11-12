@@ -29,7 +29,7 @@ Configuration properties:
 
 The HTTP gateway is intended for local Vite development. For a deployed browser app, put the gateway behind HTTPS on the same origin as the frontend and set `-Dsupplygo.web.secureCookie=true`; do not expose the development HTTP listener directly to the internet. Configure the reverse proxy to preserve the `/api` path. No wildcard CORS is enabled.
 
-The cookie is HttpOnly, SameSite=Strict, scoped to `/api`, and has a 15-minute idle and 8-hour absolute server-side lifetime. State-changing browser endpoints require the `X-SupplyGo-Request: 1` header. Authentication, inventory, and orders are connected to the Java server. Dashboard remains sample data in this phase.
+The cookie is HttpOnly, SameSite=Strict, scoped to `/api`, and has a 15-minute idle and 8-hour absolute server-side lifetime. State-changing browser endpoints require the `X-SupplyGo-Request: 1` header. Authentication, inventory, orders, and dashboard summaries use live Java server data. The dashboard reuses the inventory and orders endpoints described below.
 
 Inventory endpoints require an active server session:
 - `GET /api/inventory` lists persisted products and stock.
