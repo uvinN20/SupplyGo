@@ -14,7 +14,6 @@ import com.supplygo.model.UserProfile;
 import com.supplygo.protocol.BusinessProfileData;
 import com.supplygo.protocol.OrderData;
 import com.supplygo.protocol.ProtocolCodec;
-import com.supplygo.protocol.RouteData;
 import com.supplygo.protocol.ProtocolException;
 import com.supplygo.security.TlsSupport;
 import java.io.IOException;
@@ -409,7 +408,7 @@ public final class WebGatewayServer implements AutoCloseable {
         Session session = requireSession(exchange);
         try {
             JsonObject response = new JsonObject();
-            response.add("route", RouteData.encode(session.client.findRoute(from, to)));
+            response.add("route", session.client.findRoute(from, to));
             send(exchange, 200, response);
         } catch (ServerRejectedException rejected) {
             throw rejectedFailure(rejected);
