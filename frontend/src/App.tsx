@@ -131,7 +131,7 @@ export default function App() {
         return () => {
             active = false;
         };
-    }, [session, dashboardOrdersAvailable]);
+    }, [session, dashboardOrdersAvailable, page]);
 
     function navigate(next: string) {
         setPage(next);
