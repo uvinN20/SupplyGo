@@ -36,7 +36,6 @@ import Login from "./features/Login";
 import Dashboard from "./features/Dashboard";
 import Inventory from "./features/Inventory";
 import {
-    initialProducts,
     type Product,
 } from "./lib/demo";
 const navigation: { name: string; icon: LucideIcon; phase?: string }[] = [
@@ -69,10 +68,10 @@ export default function App() {
     }, []);
     const [page, setPage] = useState("Dashboard");
     const [menu, setMenu] = useState(false);
-    const [products] = useState<Product[]>(() =>
-        initialProducts.map((p) => ({ ...p })),
-    );
     const [inventory, setInventory] = useState<Product[]>([]);
+    const [dashboardOrders, setDashboardOrders] = useState<LiveOrder[]>([]);
+    const [dashboardOrdersLoading, setDashboardOrdersLoading] = useState(false);
+    const [dashboardOrdersError, setDashboardOrdersError] = useState("");
     const [inventoryLoading, setInventoryLoading] = useState(false);
     const [inventoryError, setInventoryError] = useState("");
 
@@ -100,6 +99,40 @@ export default function App() {
             active = false;
         };
     }, [session]);
+    const dashboardOrdersAvailable = session
+        ? ["Admin", "Seller", "Seller Manager", "Production Manager"].includes(session.role)
+        : false;
+
+    useEffect(() => {
+        if (!session || !dashboardOrdersAvailable) {
+            setDashboardOrders([]);
+            setDashboardOrdersError("");
+            setDashboardOrdersLoading(false);
+            return;
+        }
+        let active = true;
+        setDashboardOrdersLoading(true);
+        setDashboardOrdersError("");
+        listOrders()
+            .then((items) => {
+                if (active) setDashboardOrders(Array.isArray(items) ? items : []);
+            })
+            .catch((cause: unknown) => {
+                if (active) {
+                    setDashboardOrders([]);
+                    setDashboardOrdersError(
+                        cause instanceof Error ? cause.message : "Could not load dashboard orders.",
+                    );
+                }
+            })
+            .finally(() => {
+                if (active) setDashboardOrdersLoading(false);
+            });
+        return () => {
+            active = false;
+        };
+    }, [session, dashboardOrdersAvailable, page]);
+
     function navigate(next: string) {
         setPage(next);
         setMenu(false);
@@ -185,7 +218,7 @@ export default function App() {
                         <p>
                             You’re exploring the web preview.
                             <br />
-                            Dashboard still uses sample data. Orders are connected to your SupplyGo server.
+                            Dashboard, Inventory and Orders are connected to your SupplyGo server. Business profiles, routes and chat are planned.
                         </p>
                         <button onClick={() => navigate("About preview")}>
                             About this preview <ArrowUpRight size={15} />
@@ -236,7 +269,7 @@ export default function App() {
                     </div>
                     <div className="topbar-right">
                         <span className="demo-badge">
-                            <span className="tiny-dot" /> {page === "Inventory" || page === "Orders" ? "Live server data" : "Demo data"}
+                            <span className="tiny-dot" /> {page === "Inventory" || page === "Orders" || page === "Dashboard" ? "Live server data" : "Demo data"}
                         </span>
                         <div className="user-summary">
                             <span className="avatar">
@@ -258,7 +291,9 @@ export default function App() {
                                 : "Inventory is loaded from your SupplyGo server and saved in its local data store."
                             : page === "Orders"
                                 ? "Orders are loaded from your SupplyGo server. Actions update the server and stock."
-                                : "Signed in · Dashboard content below is sample data."}
+                                : dashboardOrdersError
+                                    ? dashboardOrdersError
+                                    : "Dashboard totals and recent orders are loaded from your SupplyGo server."}
                     </span>
                 </div>
                 <main id="main-content" className="main-content" tabIndex={-1}>
@@ -266,7 +301,11 @@ export default function App() {
                         <Dashboard
                             name={session.username}
                             role={session.role}
-                            products={products}
+                            products={inventory}
+                            orders={dashboardOrders}
+                            loading={inventoryLoading || dashboardOrdersLoading}
+                            error={inventoryError || dashboardOrdersError}
+                            ordersAvailable={dashboardOrdersAvailable}
                             navigate={navigate}
                         />
                     ) : page === "Inventory" ? (
@@ -481,7 +520,7 @@ function Planned({
         Routes: "Location selectors, shortest-route results and a visual road graph powered by the Java backend.",
         Chat: "A colourful team conversation view connected through a WebSocket-to-UDP bridge.",
         "About preview":
-            "Your account and inventory are connected to the Java server. Orders are loaded and saved on the server. Dashboard still shows sample records.",
+            "Your account, inventory, orders, and dashboard are connected to the Java server.",
     };
     return (
         <div className="page-enter">

@@ -60,11 +60,12 @@ describe("Authenticated web preview", () => {
             role: "Admin",
         });
         api.listInventory.mockResolvedValue(initialProducts);
+        api.listOrders.mockResolvedValue([]);
         render(<App />);
         expect(await screen.findByText("yasiru")).toBeInTheDocument();
         expect(
             screen.getByText(
-                /Dashboard content below is sample data/,
+                /Dashboard totals and recent orders are loaded/,
             ),
         ).toBeInTheDocument();
     });
@@ -76,7 +77,7 @@ describe("Authenticated web preview", () => {
         );
         expect(
             screen.getByText(
-                /Dashboard content below is sample data/,
+                /Dashboard totals and recent orders are loaded/,
             ),
         ).toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Sign out" }));
