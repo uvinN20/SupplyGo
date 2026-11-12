@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import {
     joinChat,
     leaveChat,
@@ -44,6 +45,7 @@ export default function Chat() {
             } catch (cause) {
                 if (stopped) return;
                 setError(cause instanceof Error ? cause.message : "The chat connection was lost. Join the room again.");
+                void leaveChat().catch(() => undefined);
                 setJoined(false);
             } finally {
                 if (!stopped) timer = window.setTimeout(poll, 1500);
