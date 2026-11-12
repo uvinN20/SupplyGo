@@ -2586,3 +2586,67 @@ select:focus {
         transition-duration: 0.01ms !important;
     }
 }
+
+.profile-location-reminder {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 16px clamp(18px, 3vw, 42px) 0;
+    padding: 13px 16px;
+    border: 1px solid #cfe9df;
+    border-radius: 14px;
+    background: linear-gradient(110deg, #f0faf6, #f4f8fd);
+    color: #415d6c;
+}
+
+.profile-location-reminder > div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.profile-location-reminder-icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    place-items: center;
+    border-radius: 12px;
+    background: #def3eb;
+    color: #078e82;
+}
+
+.profile-location-reminder p {
+    display: grid;
+    gap: 3px;
+    margin: 0;
+    line-height: 1.45;
+}
+
+.profile-location-reminder strong {
+    color: #263f52;
+    font-size: 0.88rem;
+}
+
+.profile-location-reminder p span {
+    color: #6c8094;
+    font-size: 0.8rem;
+}
+
+.profile-location-reminder .btn {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 600px) {
+    .profile-location-reminder {
+        align-items: stretch;
+        flex-direction: column;
+        margin-inline: 14px;
+    }
+
+    .profile-location-reminder .btn {
+        width: 100%;
+    }
+}
