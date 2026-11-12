@@ -7,7 +7,6 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import com.supplygo.client.ServerRejectedException;
 import com.supplygo.client.SupplyGoTcpClient;
-import com.supplygo.model.BusinessProfile;
 import com.supplygo.model.OrderStatus;
 import com.supplygo.model.SupplyOrder;
 import com.supplygo.model.Role;
