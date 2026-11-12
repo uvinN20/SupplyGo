@@ -167,6 +167,7 @@ describe("Authenticated web preview", () => {
         expect(await screen.findByText("#SG-1043")).toBeInTheDocument();
         expect(screen.queryByText("#SG-1048")).not.toBeInTheDocument();
         api.joinChat.mockResolvedValue({ username: "admin" });
+        api.leaveChat.mockResolvedValue(undefined);
         api.listChatMessages.mockResolvedValue({ messages: [], cursor: 0, truncated: false });
         await user.click(screen.getByRole("button", { name: "Chat" }));
         expect(screen.getByRole("heading", { name: "SupplyGo shared room" })).toBeInTheDocument();
