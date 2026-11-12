@@ -282,6 +282,68 @@ export async function changeInventoryStock(
 }
 
 
+export type ChatMessage = {
+    id: number;
+    sender: string;
+    role: string;
+    text: string;
+    time: string;
+};
+
+type ChatBatchResponse = {
+    messages: ChatMessage[];
+    cursor: number;
+    truncated: boolean;
+};
+
+export async function joinChat(): Promise<{ username: string }> {
+    const body = await readData<{ status: string; username: string }>(
+        await request("/api/chat/session", {
+            method: "POST",
+            headers: csrfHeaders,
+        }),
+    );
+    if (body.status !== "joined" || typeof body.username !== "string")
+        throw new Error("SupplyGo returned an invalid chat session.");
+    return { username: body.username };
+}
+
+export async function leaveChat(): Promise<void> {
+    const response = await request("/api/chat/session", {
+        method: "DELETE",
+        headers: { "X-SupplyGo-Request": "1" },
+    });
+    await readData<{ status: string }>(response);
+}
+
+export async function sendChatMessage(text: string): Promise<string> {
+    const body = await readData<{ status: string; message: string }>(
+        await request("/api/chat/messages", {
+            method: "POST",
+            headers: csrfHeaders,
+            body: JSON.stringify({ text }),
+        }),
+    );
+    if (body.status !== "accepted" || typeof body.message !== "string")
+        throw new Error("SupplyGo did not confirm this chat message.");
+    return body.message;
+}
+
+export async function listChatMessages(after: number): Promise<ChatBatchResponse> {
+    if (!Number.isSafeInteger(after) || after < 0)
+        throw new Error("Invalid chat message cursor.");
+    const body = await readData<ChatBatchResponse>(
+        await request(`/api/chat/messages?after=${after}`),
+    );
+    if (!Array.isArray(body.messages) || !Number.isSafeInteger(body.cursor)
+        || typeof body.truncated !== "boolean"
+        || body.messages.some((message) => !Number.isSafeInteger(message.id)
+            || typeof message.sender !== "string" || typeof message.role !== "string"
+            || typeof message.text !== "string" || typeof message.time !== "string"))
+        throw new Error("SupplyGo returned invalid chat messages.");
+    return body;
+}
+
 export type OrderStatus = "PENDING" | "APPROVED" | "FULFILLED" | "CANCELLED";
 export type LiveOrder = {
     id: number;
