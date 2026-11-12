@@ -14,10 +14,12 @@ import com.supplygo.model.UserProfile;
 import com.supplygo.protocol.BusinessProfileData;
 import com.supplygo.protocol.OrderData;
 import com.supplygo.protocol.ProtocolCodec;
+import com.supplygo.protocol.RouteData;
 import com.supplygo.protocol.ProtocolException;
 import com.supplygo.security.TlsSupport;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -96,6 +98,11 @@ public final class WebGatewayServer implements AutoCloseable {
                 if (path.equals("/api/business-profile") && method.equals("PUT")) { requireBrowserRequest(exchange); saveBusinessProfile(exchange); return; }
                 if (path.equals("/api/business-profiles/suppliers") && method.equals("GET")) { listBusinessProfiles(exchange, true); return; }
                 if (path.equals("/api/business-profiles/sellers") && method.equals("GET")) { listBusinessProfiles(exchange, false); return; }
+                if (path.equals("/api/routes/locations") && method.equals("GET")) { listRouteNetwork(exchange, false); return; }
+                if (path.equals("/api/routes/roads") && method.equals("GET")) { listRouteNetwork(exchange, true); return; }
+                if (path.equals("/api/routes/locations") && method.equals("POST")) { requireBrowserRequest(exchange); saveRouteLocation(exchange); return; }
+                if (path.equals("/api/routes/roads") && method.equals("POST")) { requireBrowserRequest(exchange); saveRouteRoad(exchange); return; }
+                if (path.equals("/api/routes/shortest") && method.equals("GET")) { findShortestRoute(exchange); return; }
                 sendError(exchange, 404, "NOT_FOUND", "Endpoint not found");
             } catch (ApiFailure failure) {
                 sendError(exchange, failure.status, failure.code, failure.getMessage());
@@ -340,6 +347,93 @@ public final class WebGatewayServer implements AutoCloseable {
         } catch (NumberFormatException error) {
             throw new ApiFailure(400, "INVALID_REQUEST", "Directory offset must be between 0 and 10000");
         }
+    }
+
+    private void listRouteNetwork(HttpExchange exchange, boolean roads) throws IOException, ApiFailure {
+        Session session = requireSession(exchange);
+        int offset = queryOffset(exchange);
+        try {
+            JsonObject page = session.client.roadNetworkPage(roads, offset);
+            String key = roads ? "roads" : "locations";
+            JsonArray rows = page.getAsJsonArray(key);
+            if (rows == null || !page.has("nextOffset")) throw new IOException("Invalid route network response");
+            JsonObject response = new JsonObject();
+            response.add(key, rows.deepCopy());
+            response.add("nextOffset", page.get("nextOffset").deepCopy());
+            send(exchange, 200, response);
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "ROUTES_SERVICE_UNAVAILABLE", "Could not load the road network from the SupplyGo server");
+        }
+    }
+
+    private void saveRouteLocation(HttpExchange exchange) throws IOException, ApiFailure {
+        JsonObject body = requestBody(exchange, Set.of("id", "name"));
+        String id = requiredText(body, "id", 1, 24);
+        String name = requiredText(body, "name", 1, 64);
+        Session session = requireSession(exchange);
+        try {
+            session.client.saveLocation(id, name);
+            send(exchange, 200, json("status", "saved"));
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "ROUTES_SERVICE_UNAVAILABLE", "Could not save the location to the SupplyGo server");
+        }
+    }
+
+    private void saveRouteRoad(HttpExchange exchange) throws IOException, ApiFailure {
+        JsonObject body = requestBody(exchange, Set.of("from", "to", "meters"));
+        String from = requiredText(body, "from", 1, 24);
+        String to = requiredText(body, "to", 1, 24);
+        long meters = requiredPositiveLong(body, "meters");
+        if (meters > 1_000_000_000L)
+            throw new ApiFailure(400, "INVALID_REQUEST", "meters must be from 1 to 1000000000");
+        Session session = requireSession(exchange);
+        try {
+            session.client.saveRoad(from, to, meters);
+            send(exchange, 200, json("status", "saved"));
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "ROUTES_SERVICE_UNAVAILABLE", "Could not save the road to the SupplyGo server");
+        }
+    }
+
+    private void findShortestRoute(HttpExchange exchange) throws IOException, ApiFailure {
+        Map<String, String> query = strictQuery(exchange, Set.of("from", "to"));
+        String from = query.get("from"), to = query.get("to");
+        if (from == null || to == null || from.isBlank() || to.isBlank())
+            throw new ApiFailure(400, "INVALID_REQUEST", "from and to location IDs are required");
+        Session session = requireSession(exchange);
+        try {
+            JsonObject response = new JsonObject();
+            response.add("route", RouteData.encode(session.client.findRoute(from, to)));
+            send(exchange, 200, response);
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "ROUTES_SERVICE_UNAVAILABLE", "Could not find a route on the SupplyGo server");
+        }
+    }
+
+    private static Map<String, String> strictQuery(HttpExchange exchange, Set<String> allowed) throws ApiFailure {
+        String raw = exchange.getRequestURI().getRawQuery();
+        if (raw == null || raw.isEmpty()) throw new ApiFailure(400, "INVALID_REQUEST", "Query parameters are required");
+        Map<String, String> values = new java.util.HashMap<>();
+        try {
+            for (String part : raw.split("&", -1)) {
+                String[] pair = part.split("=", 2);
+                String key = URLDecoder.decode(pair[0], StandardCharsets.UTF_8);
+                String value = pair.length == 2 ? URLDecoder.decode(pair[1], StandardCharsets.UTF_8) : "";
+                if (!allowed.contains(key) || values.putIfAbsent(key, value) != null)
+                    throw new ApiFailure(400, "INVALID_REQUEST", "Query parameters are invalid");
+            }
+        } catch (IllegalArgumentException error) {
+            throw new ApiFailure(400, "INVALID_REQUEST", "Query parameters are invalid");
+        }
+        return values;
     }
 
     private static long requiredPositiveLong(JsonObject body, String field) throws ApiFailure {
