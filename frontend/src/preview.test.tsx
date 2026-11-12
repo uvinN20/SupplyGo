@@ -16,6 +16,9 @@ const api = vi.hoisted(() => ({
     listOrders: vi.fn(),
     submitOrder: vi.fn(),
     updateOrderStatus: vi.fn(),
+    getBusinessProfile: vi.fn(),
+    saveBusinessProfile: vi.fn(),
+    listBusinessProfiles: vi.fn(),
 }));
 vi.mock("./lib/api", () => api);
 

@@ -1886,3 +1886,113 @@ select {
 .inventory-toolbar label select {
     min-height: 42px;
 }
+
+
+.business-profile-card {
+    padding: 24px;
+}
+.profile-section-heading,
+.profile-form-actions,
+.profile-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+.profile-section-heading {
+    margin-bottom: 22px;
+}
+.profile-section-heading h2 {
+    margin: 0 0 6px;
+    color: var(--ink);
+}
+.profile-section-heading p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+.business-profile-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+.business-profile-form label {
+    display: grid;
+    gap: 7px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 650;
+}
+.business-profile-form input {
+    min-height: 44px;
+    padding: 0 13px;
+}
+.business-profile-form small {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 400;
+}
+.profile-form-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+}
+.profile-form-actions span {
+    color: var(--muted);
+    font-size: 11px;
+}
+.business-profile-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+}
+.business-profile-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid rgb(217 228 238 / 75%);
+    border-radius: 16px;
+    background: rgb(255 255 255 / 60%);
+}
+.profile-avatar {
+    display: grid;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border-radius: 14px;
+    color: #087c76;
+    background: #e4f5ef;
+    font-weight: 750;
+}
+.profile-row-main,
+.profile-row-contact {
+    display: grid;
+    gap: 4px;
+}
+.profile-row-main {
+    flex: 1;
+    min-width: 0;
+}
+.profile-row-main strong { color: var(--ink); }
+.profile-row-main span,
+.profile-row-contact span {
+    color: var(--muted);
+    font-size: 12px;
+}
+.profile-pagination {
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 12px;
+}
+.profile-pagination > div {
+    display: flex;
+    gap: 8px;
+}
+@media (max-width: 680px) {
+    .business-profile-form { grid-template-columns: 1fr; }
+    .profile-section-heading,
+    .business-profile-row { align-items: flex-start; }
+    .business-profile-row { flex-wrap: wrap; }
+    .profile-row-contact { padding-left: 54px; }
+}

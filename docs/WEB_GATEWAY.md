@@ -45,4 +45,10 @@ Order endpoints require an active server session:
 
 Orders reserve available stock when placed, release it when cancelled, and consume it when fulfilled.
 
+Business profile endpoints require an active server session:
+- `GET /api/business-profile` loads the signed-in supplier or seller's profile; returns `profile: null` when they have not saved one yet.
+- `PUT /api/business-profile` saves `fullName`, `businessName`, `contactNumber`, and `location`. Requests require the CSRF header.
+- `GET /api/business-profiles/suppliers?offset=0` and `GET /api/business-profiles/sellers?offset=0` list role-authorized directories in pages of ten.
+- The Java server enforces profile ownership and directory permissions. Profile data is persisted in `data/business-profiles.json`.
+
 Self-service account creation allows only supplier and seller roles. Admin and manager accounts must be provisioned by an operator through the existing Java account management command.

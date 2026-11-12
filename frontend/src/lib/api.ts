@@ -101,6 +101,72 @@ async function readData<T>(response: Response): Promise<T> {
     return body as T;
 }
 
+export type BusinessProfile = {
+    username: string;
+    role: Role;
+    fullName: string;
+    businessName: string;
+    contactNumber: string;
+    location: string;
+    createdAt: string;
+    updatedAt: string;
+};
+export type ProfileDetails = Pick<BusinessProfile, "fullName" | "businessName" | "contactNumber" | "location">;
+type BusinessProfileResponse = { profile: Record<string, unknown> | null };
+type BusinessDirectoryResponse = { profiles: Array<Record<string, unknown>>; nextOffset: number };
+
+function profileFromApi(value: Record<string, unknown>): BusinessProfile {
+    if (typeof value.username !== "string" || typeof value.role !== "string"
+        || typeof value.fullName !== "string" || typeof value.businessName !== "string"
+        || typeof value.contactNumber !== "string" || typeof value.location !== "string"
+        || typeof value.createdAt !== "string" || typeof value.updatedAt !== "string")
+        throw new Error("SupplyGo returned invalid business profile data.");
+    return {
+        username: value.username,
+        role: roleFromApi(value.role),
+        fullName: value.fullName,
+        businessName: value.businessName,
+        contactNumber: value.contactNumber,
+        location: value.location,
+        createdAt: value.createdAt,
+        updatedAt: value.updatedAt,
+    };
+}
+
+export async function getBusinessProfile(): Promise<BusinessProfile | null> {
+    const body = await readData<BusinessProfileResponse>(await request("/api/business-profile"));
+    return body.profile === null ? null : profileFromApi(body.profile);
+}
+
+export async function saveBusinessProfile(details: ProfileDetails): Promise<BusinessProfile> {
+    const body = await readData<BusinessProfileResponse>(
+        await request("/api/business-profile", {
+            method: "PUT",
+            headers: csrfHeaders,
+            body: JSON.stringify({
+                fullName: details.fullName.trim(),
+                businessName: details.businessName.trim(),
+                contactNumber: details.contactNumber.trim(),
+                location: details.location.trim(),
+            }),
+        }),
+    );
+    if (body.profile === null) throw new Error("SupplyGo did not return the saved business profile.");
+    return profileFromApi(body.profile);
+}
+
+export async function listBusinessProfiles(
+    directory: "suppliers" | "sellers",
+    offset = 0,
+): Promise<{ profiles: BusinessProfile[]; nextOffset: number }> {
+    const body = await readData<BusinessDirectoryResponse>(
+        await request(`/api/business-profiles/${directory}?offset=${offset}`),
+    );
+    if (!Array.isArray(body.profiles) || !Number.isInteger(body.nextOffset))
+        throw new Error("SupplyGo returned invalid business directory data.");
+    return { profiles: body.profiles.map(profileFromApi), nextOffset: body.nextOffset };
+}
+
 export async function listInventory(): Promise<Product[]> {
     const body = await readData<InventoryResponse>(
         await request("/api/inventory"),
