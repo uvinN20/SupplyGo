@@ -1862,3 +1862,27 @@ select {
     font-size: 14px;
 }
 .sidebar-error { margin: 8px 12px; font-size: 10px; }
+
+
+.order-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.order-actions .btn {
+    padding: 8px 11px;
+    font-size: 12px;
+}
+.inventory-toolbar label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+.inventory-toolbar label input,
+.inventory-toolbar label select {
+    min-height: 42px;
+}

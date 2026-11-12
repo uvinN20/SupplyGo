@@ -7,8 +7,11 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import com.supplygo.client.ServerRejectedException;
 import com.supplygo.client.SupplyGoTcpClient;
+import com.supplygo.model.OrderStatus;
+import com.supplygo.model.SupplyOrder;
 import com.supplygo.model.Role;
 import com.supplygo.model.UserProfile;
+import com.supplygo.protocol.OrderData;
 import com.supplygo.protocol.ProtocolCodec;
 import com.supplygo.protocol.ProtocolException;
 import com.supplygo.security.TlsSupport;
@@ -85,6 +88,9 @@ public final class WebGatewayServer implements AutoCloseable {
                 if (path.equals("/api/inventory") && method.equals("GET")) { listInventory(exchange); return; }
                 if (path.equals("/api/inventory/products") && method.equals("POST")) { requireBrowserRequest(exchange); createProduct(exchange); return; }
                 if (path.equals("/api/inventory/stock") && method.equals("POST")) { requireBrowserRequest(exchange); changeStock(exchange); return; }
+                if (path.equals("/api/orders") && method.equals("GET")) { listOrders(exchange); return; }
+                if (path.equals("/api/orders") && method.equals("POST")) { requireBrowserRequest(exchange); createOrder(exchange); return; }
+                if (path.equals("/api/orders/status") && method.equals("POST")) { requireBrowserRequest(exchange); changeOrderStatus(exchange); return; }
                 sendError(exchange, 404, "NOT_FOUND", "Endpoint not found");
             } catch (ApiFailure failure) {
                 sendError(exchange, failure.status, failure.code, failure.getMessage());
@@ -195,6 +201,80 @@ public final class WebGatewayServer implements AutoCloseable {
         } catch (IOException failure) {
             throw new ApiFailure(502, "INVENTORY_SERVICE_UNAVAILABLE", "Could not update stock on the SupplyGo server");
         }
+    }
+
+    private void listOrders(HttpExchange exchange) throws IOException, ApiFailure {
+        Session session = requireSession(exchange);
+        int offset = 0;
+        JsonArray orders = new JsonArray();
+        try {
+            do {
+                JsonObject page = session.client.orderPage(offset);
+                JsonArray rows = page.getAsJsonArray("orders");
+                if (rows == null || !page.has("nextOffset")) throw new IOException("Invalid orders response");
+                rows.forEach(row -> orders.add(row.deepCopy()));
+                int next = page.get("nextOffset").getAsInt();
+                if (next < 0) break;
+                if (next <= offset || next > 10000) throw new IOException("Invalid order pagination");
+                offset = next;
+            } while (orders.size() <= 10000);
+            JsonObject response = new JsonObject();
+            response.add("orders", orders);
+            send(exchange, 200, response);
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "ORDER_SERVICE_UNAVAILABLE", "Could not load orders from the SupplyGo server");
+        }
+    }
+
+    private void createOrder(HttpExchange exchange) throws IOException, ApiFailure {
+        JsonObject body = requestBody(exchange, Set.of("clientOrderId", "productId", "quantity"));
+        String clientOrderId = requiredText(body, "clientOrderId", 36, 36);
+        String productId = requiredText(body, "productId", 1, 24).toUpperCase(java.util.Locale.ROOT);
+        int quantity = requiredQuantity(body);
+        if (quantity == 0) throw new ApiFailure(400, "INVALID_ORDER", "Order quantity must be at least 1");
+        Session session = requireSession(exchange);
+        try {
+            SupplyOrder order = session.client.createOrder(clientOrderId, productId, quantity);
+            JsonObject response = new JsonObject();
+            response.add("order", OrderData.encode(order));
+            send(exchange, 201, response);
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "ORDER_SERVICE_UNAVAILABLE", "Could not submit the order to the SupplyGo server");
+        }
+    }
+
+    private void changeOrderStatus(HttpExchange exchange) throws IOException, ApiFailure {
+        JsonObject body = requestBody(exchange, Set.of("orderId", "status"));
+        long orderId = requiredPositiveLong(body, "orderId");
+        String requested = requiredText(body, "status", 1, 16);
+        OrderStatus target;
+        try { target = OrderStatus.valueOf(requested); }
+        catch (IllegalArgumentException error) { throw new ApiFailure(400, "INVALID_ORDER", "Choose a supported order status"); }
+        if (target != OrderStatus.APPROVED && target != OrderStatus.FULFILLED && target != OrderStatus.CANCELLED)
+            throw new ApiFailure(400, "INVALID_ORDER", "Choose a supported order action");
+        Session session = requireSession(exchange);
+        try {
+            SupplyOrder order = session.client.changeOrder(orderId, target);
+            JsonObject response = new JsonObject();
+            response.add("order", OrderData.encode(order));
+            send(exchange, 200, response);
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "ORDER_SERVICE_UNAVAILABLE", "Could not update the order on the SupplyGo server");
+        }
+    }
+
+    private static long requiredPositiveLong(JsonObject body, String field) throws ApiFailure {
+        if (!(body.get(field) instanceof JsonPrimitive value) || !value.isNumber()
+                || !value.getAsString().matches("[1-9][0-9]{0,18}"))
+            throw new ApiFailure(400, "INVALID_REQUEST", field + " must be a positive whole number");
+        try { return Long.parseLong(value.getAsString()); }
+        catch (NumberFormatException error) { throw new ApiFailure(400, "INVALID_REQUEST", field + " is out of range"); }
     }
 
     private static int requiredQuantity(JsonObject body) throws ApiFailure {

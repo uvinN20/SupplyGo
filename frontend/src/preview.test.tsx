@@ -13,6 +13,9 @@ const api = vi.hoisted(() => ({
     createAccount: vi.fn(),
     listInventory: vi.fn(),
     createInventoryProduct: vi.fn(),
+    listOrders: vi.fn(),
+    submitOrder: vi.fn(),
+    updateOrderStatus: vi.fn(),
 }));
 vi.mock("./lib/api", () => api);
 
@@ -35,6 +38,9 @@ async function enter(role = "Admin") {
     api.signOut.mockResolvedValue(undefined);
     api.listInventory.mockResolvedValue(initialProducts);
     api.createInventoryProduct.mockResolvedValue(undefined);
+    api.listOrders.mockResolvedValue([]);
+    api.submitOrder.mockResolvedValue(undefined);
+    api.updateOrderStatus.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<App />);
     const username = await screen.findByLabelText("Username");
@@ -58,7 +64,7 @@ describe("Authenticated web preview", () => {
         expect(await screen.findByText("yasiru")).toBeInTheDocument();
         expect(
             screen.getByText(
-                /Workspace content and actions below are sample data/,
+                /Dashboard content below is sample data/,
             ),
         ).toBeInTheDocument();
     });
@@ -70,7 +76,7 @@ describe("Authenticated web preview", () => {
         );
         expect(
             screen.getByText(
-                /Workspace content and actions below are sample data/,
+                /Dashboard content below is sample data/,
             ),
         ).toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Sign out" }));
@@ -134,14 +140,18 @@ describe("Authenticated web preview", () => {
             "Account created",
         );
     });
-    it("filters sample orders and explains planned destinations", async () => {
+    it("filters live orders and explains planned destinations", async () => {
         const user = await enter();
+        api.listOrders.mockResolvedValue([
+            { id: 1043, clientOrderId: "00000000-0000-4000-8000-000000000043", sellerUsername: "freshmart", productId: "FR-001", quantity: 12, status: "CANCELLED", createdAt: "2026-11-12T00:00:00Z", updatedAt: "2026-11-12T00:00:00Z", updatedBy: "admin" },
+            { id: 1048, clientOrderId: "00000000-0000-4000-8000-000000000048", sellerUsername: "freshmart", productId: "FR-002", quantity: 40, status: "PENDING", createdAt: "2026-11-12T00:00:00Z", updatedAt: "2026-11-12T00:00:00Z", updatedBy: "freshmart" },
+        ]);
         await user.click(screen.getByRole("button", { name: "Orders" }));
         await user.selectOptions(
             screen.getByLabelText("Order status"),
             "Cancelled",
         );
-        expect(screen.getByText("#SG-1043")).toBeInTheDocument();
+        expect(await screen.findByText("#SG-1043")).toBeInTheDocument();
         expect(screen.queryByText("#SG-1048")).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Chat" }));
         expect(screen.getByText("Phase 8 · Planned")).toBeInTheDocument();

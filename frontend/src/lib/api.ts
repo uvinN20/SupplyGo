@@ -145,3 +145,52 @@ export async function changeInventoryStock(
         }),
     );
 }
+
+
+export type OrderStatus = "PENDING" | "APPROVED" | "FULFILLED" | "CANCELLED";
+export type LiveOrder = {
+    id: number;
+    clientOrderId: string;
+    sellerUsername: string;
+    productId: string;
+    quantity: number;
+    status: OrderStatus;
+    createdAt: string;
+    updatedAt: string;
+    updatedBy: string;
+};
+
+type OrderResponse = { order: LiveOrder };
+type OrdersResponse = { orders: LiveOrder[] };
+
+export async function listOrders(): Promise<LiveOrder[]> {
+    const body = await readData<OrdersResponse>(await request("/api/orders"));
+    if (!Array.isArray(body.orders)) throw new Error("SupplyGo returned invalid order data.");
+    return body.orders;
+}
+
+export async function submitOrder(productId: string, quantity: number): Promise<LiveOrder> {
+    const body = await readData<OrderResponse>(
+        await request("/api/orders", {
+            method: "POST",
+            headers: csrfHeaders,
+            body: JSON.stringify({
+                clientOrderId: crypto.randomUUID(),
+                productId,
+                quantity,
+            }),
+        }),
+    );
+    return body.order;
+}
+
+export async function updateOrderStatus(id: number, status: OrderStatus): Promise<LiveOrder> {
+    const body = await readData<OrderResponse>(
+        await request("/api/orders/status", {
+            method: "POST",
+            headers: csrfHeaders,
+            body: JSON.stringify({ orderId: id, status }),
+        }),
+    );
+    return body.order;
+}
