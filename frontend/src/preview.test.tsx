@@ -19,6 +19,11 @@ const api = vi.hoisted(() => ({
     getBusinessProfile: vi.fn(),
     saveBusinessProfile: vi.fn(),
     listBusinessProfiles: vi.fn(),
+    listRouteLocations: vi.fn(),
+    listRouteRoads: vi.fn(),
+    saveRouteLocation: vi.fn(),
+    saveRouteRoad: vi.fn(),
+    findShortestRoute: vi.fn(),
 }));
 vi.mock("./lib/api", () => api);
 
