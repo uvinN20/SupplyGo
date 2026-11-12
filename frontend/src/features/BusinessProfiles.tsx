@@ -38,6 +38,7 @@ export default function BusinessProfiles({ role }: { role: AuthUser["role"] }) {
     const [offset, setOffset] = useState(0);
     const [nextOffset, setNextOffset] = useState(-1);
     const [query, setQuery] = useState("");
+    const [refreshKey, setRefreshKey] = useState(0);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -89,7 +90,7 @@ export default function BusinessProfiles({ role }: { role: AuthUser["role"] }) {
             })
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
-    }, [canEdit, directories.length, directory, offset]);
+    }, [canEdit, directories.length, directory, offset, refreshKey]);
 
     const visibleProfiles = useMemo(() => {
         const needle = query.trim().toLowerCase();
@@ -192,7 +193,7 @@ export default function BusinessProfiles({ role }: { role: AuthUser["role"] }) {
                         <div className="search-input">
                             <input aria-label="Search business profiles" placeholder="Search name, business, username or location…" value={query} onChange={(event) => setQuery(event.target.value)} />
                         </div>
-                        <button className="btn subtle" type="button" onClick={() => { setOffset(0); setQuery(""); }}>Refresh</button>
+                        <button className="btn subtle" type="button" onClick={() => { setOffset(0); setQuery(""); setRefreshKey((current) => current + 1); }}>Refresh</button>
                     </div>
                     <div className="business-profile-list">
                         {visibleProfiles.map((profile) => (
