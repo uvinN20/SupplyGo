@@ -7,10 +7,12 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import com.supplygo.client.ServerRejectedException;
 import com.supplygo.client.SupplyGoTcpClient;
+import com.supplygo.model.BusinessProfile;
 import com.supplygo.model.OrderStatus;
 import com.supplygo.model.SupplyOrder;
 import com.supplygo.model.Role;
 import com.supplygo.model.UserProfile;
+import com.supplygo.protocol.BusinessProfileData;
 import com.supplygo.protocol.OrderData;
 import com.supplygo.protocol.ProtocolCodec;
 import com.supplygo.protocol.ProtocolException;
@@ -91,6 +93,10 @@ public final class WebGatewayServer implements AutoCloseable {
                 if (path.equals("/api/orders") && method.equals("GET")) { listOrders(exchange); return; }
                 if (path.equals("/api/orders") && method.equals("POST")) { requireBrowserRequest(exchange); createOrder(exchange); return; }
                 if (path.equals("/api/orders/status") && method.equals("POST")) { requireBrowserRequest(exchange); changeOrderStatus(exchange); return; }
+                if (path.equals("/api/business-profile") && method.equals("GET")) { getBusinessProfile(exchange); return; }
+                if (path.equals("/api/business-profile") && method.equals("PUT")) { requireBrowserRequest(exchange); saveBusinessProfile(exchange); return; }
+                if (path.equals("/api/business-profiles/suppliers") && method.equals("GET")) { listBusinessProfiles(exchange, true); return; }
+                if (path.equals("/api/business-profiles/sellers") && method.equals("GET")) { listBusinessProfiles(exchange, false); return; }
                 sendError(exchange, 404, "NOT_FOUND", "Endpoint not found");
             } catch (ApiFailure failure) {
                 sendError(exchange, failure.status, failure.code, failure.getMessage());
@@ -266,6 +272,74 @@ public final class WebGatewayServer implements AutoCloseable {
             throw rejectedFailure(rejected);
         } catch (IOException failure) {
             throw new ApiFailure(502, "ORDER_SERVICE_UNAVAILABLE", "Could not update the order on the SupplyGo server");
+        }
+    }
+
+    private void getBusinessProfile(HttpExchange exchange) throws IOException, ApiFailure {
+        Session session = requireSession(exchange);
+        try {
+            JsonObject response = new JsonObject();
+            response.add("profile", BusinessProfileData.encode(session.client.businessProfile()));
+            send(exchange, 200, response);
+        } catch (ServerRejectedException rejected) {
+            if ("PROFILE_NOT_FOUND".equals(rejected.code())) {
+                JsonObject response = new JsonObject(); response.add("profile", com.google.gson.JsonNull.INSTANCE);
+                send(exchange, 200, response); return;
+            }
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "PROFILE_SERVICE_UNAVAILABLE", "Could not load the business profile from the SupplyGo server");
+        }
+    }
+
+    private void saveBusinessProfile(HttpExchange exchange) throws IOException, ApiFailure {
+        JsonObject body = requestBody(exchange, Set.of("fullName", "businessName", "contactNumber", "location"));
+        String fullName = requiredText(body, "fullName", 1, 64);
+        String businessName = requiredText(body, "businessName", 1, 96);
+        String contactNumber = requiredText(body, "contactNumber", 1, 32);
+        String location = requiredText(body, "location", 1, 64);
+        Session session = requireSession(exchange);
+        try {
+            JsonObject response = new JsonObject();
+            response.add("profile", BusinessProfileData.encode(
+                    session.client.updateBusinessProfile(fullName, businessName, contactNumber, location)));
+            send(exchange, 200, response);
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "PROFILE_SERVICE_UNAVAILABLE", "Could not save the business profile to the SupplyGo server");
+        }
+    }
+
+    private void listBusinessProfiles(HttpExchange exchange, boolean suppliers) throws IOException, ApiFailure {
+        Session session = requireSession(exchange);
+        int offset = queryOffset(exchange);
+        try {
+            JsonObject page = session.client.businessDirectory(suppliers, offset);
+            JsonArray profiles = page.getAsJsonArray("profiles");
+            if (profiles == null || !page.has("nextOffset")) throw new IOException("Invalid business profile response");
+            JsonObject response = new JsonObject();
+            response.add("profiles", profiles.deepCopy());
+            response.add("nextOffset", page.get("nextOffset").deepCopy());
+            send(exchange, 200, response);
+        } catch (ServerRejectedException rejected) {
+            throw rejectedFailure(rejected);
+        } catch (IOException failure) {
+            throw new ApiFailure(502, "PROFILE_SERVICE_UNAVAILABLE", "Could not load the business directory from the SupplyGo server");
+        }
+    }
+
+    private static int queryOffset(HttpExchange exchange) throws ApiFailure {
+        String query = exchange.getRequestURI().getRawQuery();
+        if (query == null || query.isEmpty()) return 0;
+        if (!query.matches("offset=(0|[1-9][0-9]{0,4})"))
+            throw new ApiFailure(400, "INVALID_REQUEST", "Directory offset is invalid");
+        try {
+            int offset = Integer.parseInt(query.substring("offset=".length()));
+            if (offset > 10000) throw new NumberFormatException();
+            return offset;
+        } catch (NumberFormatException error) {
+            throw new ApiFailure(400, "INVALID_REQUEST", "Directory offset must be between 0 and 10000");
         }
     }
 
