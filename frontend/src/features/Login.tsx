@@ -15,6 +15,7 @@ export default function Login({
 }) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [registering, setRegistering] = useState(false);
     const [role, setRole] = useState<"SUPPLIER" | "SELLER">("SELLER");
     const [busy, setBusy] = useState(false);
@@ -22,6 +23,11 @@ export default function Login({
     const [notice, setNotice] = useState("");
     async function submit(e: FormEvent) {
         e.preventDefault();
+        if (registering && password !== confirmPassword) {
+            setError("Passwords do not match.");
+            setNotice("");
+            return;
+        }
         setBusy(true);
         setError("");
         setNotice("");
@@ -30,6 +36,7 @@ export default function Login({
                 await onRegister(username.trim(), password, role);
                 setRegistering(false);
                 setPassword("");
+                setConfirmPassword("");
                 setNotice("Account created. Sign in with your new account.");
             } else {
                 await onLogin(username.trim(), password);
@@ -125,6 +132,22 @@ export default function Login({
                         />
                         {registering && (
                             <>
+                                <label htmlFor="confirm-password">
+                                    Re-enter password
+                                </label>
+                                <input
+                                    id="confirm-password"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    minLength={12}
+                                    maxLength={128}
+                                    value={confirmPassword}
+                                    onChange={(e) =>
+                                        setConfirmPassword(e.target.value)
+                                    }
+                                    required
+                                    placeholder="Enter your password again"
+                                />
                                 <label htmlFor="account-role">
                                     Account type
                                 </label>
@@ -190,6 +213,7 @@ export default function Login({
                             setRegistering((v) => !v);
                             setError("");
                             setNotice("");
+                            setConfirmPassword("");
                         }}
                     >
                         {registering

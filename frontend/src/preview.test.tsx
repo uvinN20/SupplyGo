@@ -137,6 +137,10 @@ describe("Authenticated web preview", () => {
             screen.getByLabelText("Password"),
             "a strong new password",
         );
+        await user.type(
+            screen.getByLabelText("Re-enter password"),
+            "a strong new password",
+        );
         await user.selectOptions(
             screen.getByLabelText("Account type"),
             "SELLER",

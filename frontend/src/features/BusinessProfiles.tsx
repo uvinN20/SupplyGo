@@ -22,7 +22,13 @@ const fields: Array<{ key: keyof ProfileDetails; label: string; max: number; hin
     { key: "location", label: "Town or location", max: 64, hint: "For example, Matara." },
 ];
 
-export default function BusinessProfiles({ role }: { role: AuthUser["role"] }) {
+export default function BusinessProfiles({
+    role,
+    onProfileSaved,
+}: {
+    role: AuthUser["role"];
+    onProfileSaved?: (location: string) => void;
+}) {
     const canEdit = role === "Seller" || role === "Supplier";
     const directories = role === "Admin"
         ? ["suppliers", "sellers"] as const
@@ -109,6 +115,7 @@ export default function BusinessProfiles({ role }: { role: AuthUser["role"] }) {
         try {
             const profile = await saveBusinessProfile(details);
             setSavedProfile(profile);
+            onProfileSaved?.(profile.location);
             setDetails({
                 fullName: profile.fullName,
                 businessName: profile.businessName,
