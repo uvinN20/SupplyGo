@@ -13,6 +13,10 @@ import com.supplygo.protocol.OrderData;
 /** Order screens share the window's background-worker lifecycle and server session. */
 final class OrderPanel extends JPanel {
     private record Page(List<SupplyOrder> orders, int nextOffset) { }
+    private static String displayQuantity(SupplyOrder order) {
+        return order.quantity() + (order.legacyCount() ? " fruit" : " kg");
+    }
+
     private record Draft(String seller, String submissionId, String productId, int quantity) { }
     private final ClientWindow window;
     private final JButton refresh = button("Refresh", "refreshOrders");
@@ -25,7 +29,7 @@ final class OrderPanel extends JPanel {
     private final JButton cancel = button("Cancel order", "cancelOrder");
     private final JButton details = button("Details", "orderDetails");
     private final JLabel status = new JLabel("Sign in as a seller or order manager.");
-    private final DefaultTableModel rows = new DefaultTableModel(new String[]{"Order ID", "Seller", "Product", "Units", "Status"}, 0) {
+    private final DefaultTableModel rows = new DefaultTableModel(new String[]{"Order ID", "Seller", "Product", "Quantity", "Status"}, 0) {
         @Override public boolean isCellEditable(int row, int column) { return false; }
     };
     private final JTable table = new JTable(rows);
@@ -33,6 +37,10 @@ final class OrderPanel extends JPanel {
     private UserProfile profile;
     private boolean busy;
     private int nextOffset = -1;
+    private static String displayQuantity(SupplyOrder order) {
+        return order.quantity() + (order.legacyCount() ? " fruit" : " kg");
+    }
+
     private record DraftKey(String endpoint, String seller) { }
     private final java.util.Map<DraftKey, Draft> drafts = new java.util.HashMap<>();
     private DraftKey draftKey() { return new DraftKey(window.currentEndpoint(), profile == null ? "" : profile.username()); }
@@ -64,7 +72,7 @@ final class OrderPanel extends JPanel {
             window.perform("Loading order…", () -> window.currentClient().getOrder(selected.id()), value -> {
                 replace(value);
                 JOptionPane.showMessageDialog(this, "Order: " + value.id() + " • " + value.status()
-                        + "\nSeller: " + value.sellerUsername() + "\nProduct: " + value.productId() + " • Units: " + value.quantity()
+                        + "\nSeller: " + value.sellerUsername() + "\nProduct: " + value.productId() + " • Quantity: " + displayQuantity(value)
                         + "\nCreated (UTC): " + value.createdAt() + "\nUpdated (UTC): " + value.updatedAt()
                         + "\nUpdated by: " + value.updatedBy() + "\nSubmission ID: " + value.clientOrderId(), "Order details", JOptionPane.INFORMATION_MESSAGE);
             });
@@ -94,15 +102,15 @@ final class OrderPanel extends JPanel {
         JTextField productId = new JTextField(24); productId.setName("orderProductId");
         JSpinner quantity = new JSpinner(new SpinnerNumberModel(1, 1, 1000000, 1)); quantity.setName("orderQuantity");
         JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
-        form.add(new JLabel("Product ID (uppercase)")); form.add(productId); form.add(new JLabel("Whole fruit units")); form.add(quantity);
+        form.add(new JLabel("Product ID (uppercase)")); form.add(productId); form.add(new JLabel("Weight (kg)")); form.add(quantity);
         if (JOptionPane.showConfirmDialog(this, form, "Place order and reserve stock", JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
         try {
             quantity.commitEdit();
             String id = productId.getText().strip(); new Product(id, "validation");
-            int units = ((Number) quantity.getValue()).intValue();
-            if (units < 1 || units > 1_000_000) throw new IllegalArgumentException("Quantity must be 1–1000000");
-            drafts.put(draftKey(), new Draft(profile.username(), UUID.randomUUID().toString(), id, units));
+            int kilograms = ((Number) quantity.getValue()).intValue();
+            if (kilograms < 1 || kilograms > 1_000_000) throw new IllegalArgumentException("Weight must be 1–1,000,000 whole kg");
+            drafts.put(draftKey(), new Draft(profile.username(), UUID.randomUUID().toString(), id, kilograms));
             submit();
         } catch (java.text.ParseException | IllegalArgumentException exception) {
             JOptionPane.showMessageDialog(this, exception.getMessage(), "Check order details", JOptionPane.ERROR_MESSAGE);
@@ -120,7 +128,7 @@ final class OrderPanel extends JPanel {
     private void change(OrderStatus target) {
         SupplyOrder order = selected(); if (order == null) return;
         if (target != OrderStatus.APPROVED && JOptionPane.showConfirmDialog(this,
-                (target == OrderStatus.FULFILLED ? "Fulfil order " : "Cancel order ") + order.id() + " for " + order.quantity() + " units?",
+                (target == OrderStatus.FULFILLED ? "Fulfil order " : "Cancel order ") + order.id() + " for " + displayQuantity(order) + "?",
                 "Confirm order action", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
         window.perform("Updating order…", () -> window.currentClient().changeOrder(order.id(), target), value -> {
             replace(value); window.inventoryChanged(); status.setText("Order " + value.id() + " • " + value.status() + ". Refresh inventory for current stock.");
@@ -133,7 +141,7 @@ final class OrderPanel extends JPanel {
     }
     private void render() {
         rows.setRowCount(0);
-        for (SupplyOrder order : displayed) rows.addRow(new Object[]{order.id(), order.sellerUsername(), order.productId(), order.quantity(), order.status()});
+        for (SupplyOrder order : displayed) rows.addRow(new Object[]{order.id(), order.sellerUsername(), order.productId(), displayQuantity(order), order.status()});
     }
     private SupplyOrder selected() {
         int row = table.getSelectedRow(); return row >= 0 && row < displayed.size() ? displayed.get(row) : null;

@@ -445,15 +445,15 @@ function Orders({
 
     async function placeOrder(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        const units = Number(quantity);
-        if (!productId || !Number.isInteger(units) || units < 1 || units > 1_000_000) {
-            setError("Choose a product and enter a whole quantity from 1 to 1,000,000.");
+        const kilograms = Number(quantity);
+        if (!productId || !Number.isInteger(kilograms) || kilograms < 1 || kilograms > 1_000_000) {
+            setError("Choose a product and enter a weight from 1 to 1,000,000 whole kg.");
             return;
         }
         setBusy(true);
         setError("");
         try {
-            await submitOrder(productId, units);
+            await submitOrder(productId, kilograms);
             await refresh();
             await onInventoryRefresh();
             setQuantity("1");
@@ -495,11 +495,11 @@ function Orders({
                             Product
                             <select aria-label="Order product" value={productId} onChange={(event) => setProductId(event.target.value)} required>
                                 <option value="" disabled>Select a product</option>
-                                {products.map((product) => <option key={product.id} value={product.id}>{product.name} ({product.id}) · {product.available} available</option>)}
+                                {products.map((product) => <option key={product.id} value={product.id}>{product.name} ({product.id}) · {product.available} kg available</option>)}
                             </select>
                         </label>
                         <label>
-                            Units
+                            Weight (kg)
                             <input aria-label="Order quantity" type="number" min="1" max="1000000" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
                         </label>
                         <button className="btn primary" type="submit" disabled={busy || products.length === 0}>
@@ -522,7 +522,7 @@ function Orders({
                 <div className="table-scroll">
                     <table>
                         <thead>
-                            <tr><th>Order</th><th>Seller</th><th>Product</th><th>Units</th><th>Status</th><th>Actions</th></tr>
+                            <tr><th>Order</th><th>Seller</th><th>Product</th><th>Quantity</th><th>Status</th><th>Actions</th></tr>
                         </thead>
                         <tbody>
                             {visibleOrders.map((order) => {
@@ -533,7 +533,7 @@ function Orders({
                                         <td><strong>#SG-{String(order.id).padStart(4, "0")}</strong></td>
                                         <td>{order.sellerUsername}</td>
                                         <td>{product?.name ?? order.productId}</td>
-                                        <td>{order.quantity}</td>
+                                        <td>{order.quantity} {order.legacyCount ? "fruit" : "kg"}</td>
                                         <td><span className={`badge ${order.status.toLowerCase()}`}>{order.status[0] + order.status.slice(1).toLowerCase()}</span></td>
                                         <td>
                                             <div className="order-actions">

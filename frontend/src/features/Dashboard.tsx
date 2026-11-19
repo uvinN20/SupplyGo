@@ -46,14 +46,14 @@ export default function Dashboard({
             total: orders
                 .filter((order) => {
                     const created = new Date(order.createdAt);
-                    return created.getFullYear() === date.getFullYear()
+                    return !order.legacyCount && created.getFullYear() === date.getFullYear()
                         && created.getMonth() === date.getMonth()
                         && created.getDate() === date.getDate();
                 })
                 .reduce((sum, order) => sum + order.quantity, 0),
         };
     });
-    const maxUnits = Math.max(1, ...week.map((day) => day.total));
+    const maxKilograms = Math.max(1, ...week.map((day) => day.total));
     const latestOrderText = (order: LiveOrder) =>
         order.status[0] + order.status.slice(1).toLowerCase();
 
@@ -102,9 +102,9 @@ export default function Dashboard({
                         color: "blue",
                     },
                     {
-                        title: "Available units",
+                        title: "Available stock (kg)",
                         value: loading ? "…" : m.available.toLocaleString(),
-                        note: "Whole fruit units",
+                        note: "Whole kilograms",
                         icon: Layers3,
                         color: "teal",
                     },
@@ -118,7 +118,7 @@ export default function Dashboard({
                     {
                         title: "Stock alerts",
                         value: loading ? "…" : m.low,
-                        note: "Below 50 available units",
+                        note: "Below 50 kg available",
                         icon: AlertCircle,
                         color: "orange",
                     },
@@ -147,7 +147,7 @@ export default function Dashboard({
                     </div>
                     <div className="table-scroll">
                         <table>
-                            <thead><tr><th>Order / seller</th><th>Product</th><th>Units</th><th>Status</th></tr></thead>
+                            <thead><tr><th>Order / seller</th><th>Product</th><th>Quantity</th><th>Status</th></tr></thead>
                             <tbody>
                                 {recentOrders.map((order) => {
                                     const product = products.find((item) => item.id === order.productId);
@@ -160,7 +160,7 @@ export default function Dashboard({
                                                 </div>
                                             </td>
                                             <td>{product?.name ?? order.productId}</td>
-                                            <td>{order.quantity}</td>
+                                            <td>{order.quantity} {order.legacyCount ? "fruit" : "kg"}</td>
                                             <td><span className={`badge ${order.status.toLowerCase()}`}>{latestOrderText(order)}</span></td>
                                         </tr>
                                     );
@@ -183,7 +183,7 @@ export default function Dashboard({
                             <div className="stock-alert" key={product.id}>
                                 <span className={`fruit ${product.tone}`} aria-hidden="true">{product.symbol}</span>
                                 <div><strong>{product.name}</strong><small>{stockState(product)}</small></div>
-                                <b>{product.available}<small>units</small></b>
+                                <b>{product.available}<small>kg</small></b>
                             </div>
                         ))}
                         {!loading && m.low === 0 && <p className="muted">No products are below the low-stock threshold.</p>}
@@ -197,14 +197,14 @@ export default function Dashboard({
             <div className="bottom-grid">
                 <section className="surface activity-chart">
                     <div className="section-heading">
-                        <div><h2>Order volume</h2><p>Units requested during the last seven days</p></div>
-                        <span className="legend"><i /> Units</span>
+                        <div><h2>Order volume</h2><p>Kilograms requested during the last seven days</p></div>
+                        <span className="legend"><i /> kg</span>
                     </div>
-                    <div className="bars" role="img" aria-label={`Live order units for the last seven days: ${week.map((day) => `${day.day} ${day.total}`).join(", ")}`}>
+                    <div className="bars" role="img" aria-label={`Live order weight in kilograms for the last seven days: ${week.map((day) => `${day.day} ${day.total}`).join(", ")}`}>
                         {week.map(({ key, day, total }) => (
                             <div className="bar-column" key={key}>
                                 <small>{total}</small>
-                                <div className="bar-track"><div style={{ height: `${(total / maxUnits) * 100}%` }} /></div>
+                                <div className="bar-track"><div style={{ height: `${(total / maxKilograms) * 100}%` }} /></div>
                                 <span>{day}</span>
                             </div>
                         ))}

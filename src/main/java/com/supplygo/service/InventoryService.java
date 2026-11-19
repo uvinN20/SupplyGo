@@ -81,7 +81,7 @@ public final class InventoryService {
             throw new AuthException("FORBIDDEN", "Only administrators and production managers can change inventory");
     }
     private static void quantity(int quantity) throws AuthException {
-        if (quantity < 1 || quantity > 1_000_000) throw new AuthException("INVALID_INVENTORY", "Quantity must be 1–1000000 whole fruit units");
+        if (quantity < 1 || quantity > 1_000_000) throw new AuthException("INVALID_INVENTORY", "Quantity must be 1–1000000 whole kilograms");
     }
     private void save(State state) throws AuthException {
         try { repository.save(state); }

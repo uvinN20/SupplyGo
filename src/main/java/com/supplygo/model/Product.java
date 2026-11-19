@@ -1,6 +1,6 @@
 package com.supplygo.model;
 
-/** Stock is measured in whole fruit units, not weight or currency. */
+/** Stock is measured in whole kilograms. */
 public record Product(String id, String name) {
     public Product {
         if (id == null || !id.matches("[A-Z0-9_-]{1,24}") || name == null || name.isBlank()

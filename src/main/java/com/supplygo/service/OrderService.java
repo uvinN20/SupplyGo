@@ -29,7 +29,7 @@ public final class OrderService {
         if (actor.role() != Role.SELLER) throw new AuthException("FORBIDDEN", "Only sellers can place orders");
         if (!SupplyOrder.validClientOrderId(clientOrderId) || productId == null || !productId.matches("[A-Z0-9_-]{1,24}")
                 || quantity < 1 || quantity > 1_000_000)
-            throw new AuthException("INVALID_ORDER", "Use a UUID submission ID, valid product ID and 1–1000000 whole fruit units");
+            throw new AuthException("INVALID_ORDER", "Use a UUID submission ID, valid product ID and 1–1000000 whole kilograms");
         synchronized (repository) {
             State state = repository.snapshot();
             for (SupplyOrder existing : state.orders()) {

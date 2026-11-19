@@ -22,17 +22,17 @@ A seller requesting another seller's order receives `ORDER_NOT_FOUND`.
 ## Demonstrate the complete workflow
 
 1. As an administrator or production manager, create product `APPLE` and receive
-   batches of 5 and 10 units using the Inventory tab.
+   batches of 5 and 10 kg using the Inventory tab.
 2. Sign out and sign in as a seller. Open **Orders → New order**, enter `APPLE`
-   and 8 units. The server saves a `PENDING` order and reserves 8 units.
+   and 8 kg. The server saves a `PENDING` order and reserves 8 kg.
 3. Refresh Inventory. The product shows **On hand: 15**, **Reserved: 8** and
    **Available: 7**. Another order or direct stock withdrawal cannot use those
-   8 reserved units.
+   8 kg reserved.
 4. Sign in as an administrator, seller manager or production manager. Open
    **Orders → Refresh**, select the order, and click **Approve**.
 5. Select the approved order, click **Fulfil**, and confirm. The server consumes
-   8 physical units in FIFO receipt order and marks the order `FULFILLED` in the
-   same save. Batch 1 is exhausted; batch 2 retains 7 units. Product totals become
+   8 kg of stock in FIFO receipt order and marks the order `FULFILLED` in the
+   same save. Batch 1 is exhausted; batch 2 retains 7 kg. Product totals become
    **On hand: 7**, **Reserved: 0**, **Available: 7**.
 6. The seller can refresh Orders to see the final status. **Details** shows
    creation/update times in UTC, the last acting account, and the submission ID.
@@ -50,7 +50,7 @@ One order contains one product and a whole-unit quantity from 1 to 1,000,000.
 
 | Action | Allowed starting status | Result | Stock effect |
 | --- | --- | --- | --- |
-| Place | New submission | PENDING | Reserve requested units |
+| Place | New submission | PENDING | Reserve requested weight |
 | Approve | PENDING | APPROVED | Keep reservation |
 | Fulfil | APPROVED | FULFILLED | Consume physical stock FIFO and release reservation |
 | Cancel | PENDING or APPROVED | CANCELLED | Release reservation without consuming stock |
@@ -62,9 +62,9 @@ still matches that action, without changing stock again. Competing fulfil/cancel
 actions are serialized; only one final outcome is saved.
 
 `available = onHand - reserved`. PENDING and APPROVED orders contribute to
-reserved units. Batches continue to show physical stock. Reservations are per
+reserved weight. Batches continue to show physical stock. Reservations are per
 product, with FIFO batches chosen at fulfilment; they do not promise a particular
-batch. Direct withdrawals consume FIFO stock only when enough unreserved units
+batch. Direct withdrawals consume FIFO stock only when enough unreserved stock
 remain for every active order.
 
 ## Lost replies and retries

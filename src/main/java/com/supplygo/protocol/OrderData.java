@@ -17,13 +17,17 @@ public final class OrderData {
         data.addProperty("quantity", order.quantity()); data.addProperty("status", order.status().name());
         data.addProperty("createdAt", order.createdAt()); data.addProperty("updatedAt", order.updatedAt());
         data.addProperty("updatedBy", order.updatedBy());
+        if (order.legacyCount()) data.addProperty("legacyCount", true);
         return data;
     }
     public static SupplyOrder decode(JsonElement element, String requestId) throws ProtocolException {
         try {
             if (element == null || !element.isJsonObject()) throw new IllegalArgumentException();
             JsonObject data = element.getAsJsonObject();
-            if (!data.keySet().equals(KEYS)) throw new IllegalArgumentException();
+            boolean legacyCount = data.has("legacyCount");
+            if (!data.keySet().containsAll(KEYS) || data.size() != KEYS.size() + (legacyCount ? 1 : 0)
+                    || (legacyCount && (!(data.get("legacyCount") instanceof JsonPrimitive flag)
+                            || !flag.isBoolean() || !flag.getAsBoolean()))) throw new IllegalArgumentException();
             for (String key : KEYS) {
                 if (key.equals("id") || key.equals("quantity")) continue;
                 if (!(data.get(key) instanceof JsonPrimitive value) || !value.isString() || value.getAsString().length() > 64)
@@ -32,7 +36,7 @@ public final class OrderData {
             return new SupplyOrder(number(data, "id", Long.MAX_VALUE), data.get("clientOrderId").getAsString(),
                     data.get("sellerUsername").getAsString(), data.get("productId").getAsString(),
                     (int) number(data, "quantity", 1_000_000), OrderStatus.valueOf(data.get("status").getAsString()),
-                    data.get("createdAt").getAsString(), data.get("updatedAt").getAsString(), data.get("updatedBy").getAsString());
+                    data.get("createdAt").getAsString(), data.get("updatedAt").getAsString(), data.get("updatedBy").getAsString(), legacyCount);
         } catch (RuntimeException exception) {
             throw new ProtocolException("INVALID_MESSAGE", requestId, "Invalid order response");
         }

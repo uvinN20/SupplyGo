@@ -14,9 +14,9 @@ the same server/client launch commands as authentication.
 2. Open the **Inventory** tab. Choose **Products**, then **Create product**.
    For example: ID `APPLE`, name `Apple`. IDs are case-sensitive, 1–24 uppercase
    letters, digits, underscores or hyphens. Names allow 1–60 printable characters.
-3. **Receive batch** for `APPLE` with 5 units, then another batch with 10 units.
-4. **Withdraw FIFO** for `APPLE` with 8 units. The first batch is consumed and
-   the second retains 7 units. A request exceeding available stock changes nothing.
+3. **Receive batch** for `APPLE` with 5 kg, then another batch with 10 kg.
+4. **Withdraw FIFO** for `APPLE` with 8 kg. The first batch is consumed and
+   the second retains 7 kg. A request exceeding available stock changes nothing.
 5. Click **Refresh** to see current totals or choose **Fruit batches** to see the
    remaining physical batches, their server receipt times (UTC) and receiving account.
    Products show available, on-hand and reserved quantities when orders are enabled.
@@ -31,13 +31,13 @@ username, role, receipt timestamp or batch ID.
 
 ## Stock and persistence rules
 
-- Quantities are **whole fruit units**, from 1 to 1,000,000 per receipt or
-  withdrawal. These are not kilograms, prices or monetary values.
+- Quantities are **whole kilograms**, from 1 to 1,000,000 per receipt or
+  withdrawal.
 - FIFO means server receipt order, using monotonic batch IDs; partial withdrawals
   retain the original ID and receipt metadata. Depleted batches are removed.
 - Products are append-only in this feature. Limits: 1,000 products and 10,000
   currently nonempty batches; total available quantities use a Java `long`.
-- Active orders reserve units. Direct withdrawals cannot consume the units needed
+- Active orders reserve stock by weight. Direct withdrawals cannot consume the stock needed
   for those reservations. Available stock is physical stock minus active reservations.
 - The server saves `inventory.json` beside `users.json` under `data/`, or the
   directory selected by `-Dsupplygo.data.dir=...`. Generated data is not committed.
@@ -55,7 +55,7 @@ username, role, receipt timestamp or batch ID.
 ## Scope and operational limits
 
 Order reservations and fulfilment are described in [ORDERS.md](ORDERS.md).
-Expiry dates, weights, prices, supplier ownership, inventory adjustments, historical
+Expiry dates, prices, supplier ownership, inventory adjustments, historical
 movements and automatic replenishment are future features. FIFO here has no expiry
 policy. Direct withdrawals are trusted manager actions; sellers submit orders
 through the Orders tab.
@@ -75,7 +75,7 @@ all power-loss scenarios.
 ## Verification
 
 `mvn clean verify` covers concurrent withdrawals (exactly ten out of twenty
-10-unit requests succeed against 100 units), partial FIFO allocation across
+10 kg requests succeed against 100 kg), partial FIFO allocation across
 products, persistence/reopening, authorization, invalid quantities/products,
 failed replacement without memory publication, store locks, corrupt files,
 bounded pages, and real TLS requests from manager and seller clients.

@@ -251,7 +251,7 @@ public final class WebGatewayServer implements AutoCloseable {
         String clientOrderId = requiredText(body, "clientOrderId", 36, 36);
         String productId = requiredText(body, "productId", 1, 24).toUpperCase(java.util.Locale.ROOT);
         int quantity = requiredQuantity(body);
-        if (quantity == 0) throw new ApiFailure(400, "INVALID_ORDER", "Order quantity must be at least 1");
+        if (quantity == 0) throw new ApiFailure(400, "INVALID_ORDER", "Order weight must be at least 1 kg");
         Session session = requireSession(exchange);
         try {
             SupplyOrder order = session.client.createOrder(clientOrderId, productId, quantity);
@@ -523,13 +523,13 @@ public final class WebGatewayServer implements AutoCloseable {
 
     private static int requiredQuantity(JsonObject body) throws ApiFailure {
         if (!(body.get("quantity") instanceof JsonPrimitive value) || !value.isNumber())
-            throw new ApiFailure(400, "INVALID_REQUEST", "quantity must be a whole number");
+            throw new ApiFailure(400, "INVALID_REQUEST", "Weight must be in whole kilograms");
         String text = value.getAsString();
         if (!text.matches("0|[1-9][0-9]{0,6}"))
-            throw new ApiFailure(400, "INVALID_REQUEST", "quantity must be a whole number from 0 to 1000000");
+            throw new ApiFailure(400, "INVALID_REQUEST", "Weight must be 0 to 1,000,000 whole kg");
         int quantity = Integer.parseInt(text);
         if (quantity > 1_000_000)
-            throw new ApiFailure(400, "INVALID_REQUEST", "quantity must be a whole number from 0 to 1000000");
+            throw new ApiFailure(400, "INVALID_REQUEST", "Weight must be 0 to 1,000,000 whole kg");
         return quantity;
     }
 

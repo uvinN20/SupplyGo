@@ -77,11 +77,10 @@ export default function Inventory({
                 </span>
                 <span>
                     <i className="tiny-dot" />
-                    <strong>{m.available.toLocaleString()}</strong> available
-                    units
+                    <strong>{m.available.toLocaleString()}</strong> kg available
                 </span>
                 <span>
-                    <strong>{m.reserved}</strong> reserved units
+                    <strong>{m.reserved}</strong> kg reserved
                 </span>
             </div>
             {loading && <p className="read-only-note" role="status">Loading inventory from the SupplyGo server…</p>}
@@ -142,8 +141,8 @@ export default function Inventory({
                             <tr>
                                 <th>Product</th>
                                 <th>Category</th>
-                                <th>On hand</th>
-                                <th>Reserved</th>
+                                <th>On hand (kg)</th>
+                                <th>Reserved (kg)</th>
                                 <th>Available</th>
                                 <th>Status</th>
                                 {canEdit(role) && <th>Stock actions</th>}
@@ -175,7 +174,7 @@ export default function Inventory({
                                             <strong>{p.available}</strong>
                                             <small className="inline-unit">
                                                 {" "}
-                                                units
+                                                kg
                                             </small>
                                         </td>
                                         <td>
@@ -275,8 +274,8 @@ export default function Inventory({
                 </div>
             </section>
             <p className="footnote">
-                Quantities are whole fruit units. Low stock means fewer than
-                50 available units. Inventory changes are saved by the SupplyGo server.
+                Quantities are in whole kilograms. Low stock means fewer than
+                50 kg available. Inventory changes are saved by the SupplyGo server.
             </p>
             {!canEdit(role) && (
                 <p className="read-only-note">
@@ -353,7 +352,7 @@ function AddProduct({
             available > 1_000_000
         ) {
             setError(
-                "Use a valid ID, a name of 1–64 characters and a whole quantity from 0 to 1000000.",
+                "Use a valid ID, a name of 1–64 characters and a weight from 0 to 1,000,000 whole kg.",
             );
             return;
         }
@@ -423,7 +422,7 @@ function AddProduct({
                     maxLength={60}
                     placeholder="Fresh papaya"
                 />
-                <label htmlFor="product-quantity">Opening stock (whole units)</label>
+                <label htmlFor="product-quantity">Opening stock (kg)</label>
                 <input
                     id="product-quantity"
                     name="quantity"
@@ -476,7 +475,7 @@ function StockChange({
         const form = new FormData(event.currentTarget);
         const quantity = Number(form.get("quantity"));
         if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1_000_000) {
-            setError("Enter a whole quantity from 1 to 1000000.");
+            setError("Enter a weight from 1 to 1,000,000 whole kg.");
             return;
         }
         setSaving(true);
@@ -512,7 +511,7 @@ function StockChange({
                     </button>
                 </div>
                 <p className="muted">{product.name} · {product.id}</p>
-                <label htmlFor="stock-quantity">Quantity (whole units)</label>
+                <label htmlFor="stock-quantity">Weight (kg)</label>
                 <input
                     autoFocus
                     id="stock-quantity"

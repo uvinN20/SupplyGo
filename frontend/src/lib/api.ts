@@ -351,6 +351,7 @@ export type LiveOrder = {
     sellerUsername: string;
     productId: string;
     quantity: number;
+    legacyCount?: boolean;
     status: OrderStatus;
     createdAt: string;
     updatedAt: string;

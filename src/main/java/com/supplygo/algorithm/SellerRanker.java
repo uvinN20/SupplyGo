@@ -40,7 +40,7 @@ public final class SellerRanker {
             Objects.requireNonNull(order, "order");
             if (!orderIds.add(order.id())) throw new IllegalArgumentException("Duplicate order ID");
             SellerPerformance current = totals.get(order.sellerUsername());
-            if (current != null && order.status() == OrderStatus.FULFILLED)
+            if (current != null && !order.legacyCount() && order.status() == OrderStatus.FULFILLED)
                 totals.put(current.username(), new SellerPerformance(current.username(),
                         Math.addExact(current.fulfilledUnits(), order.quantity()), Math.incrementExact(current.fulfilledOrders())));
         }

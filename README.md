@@ -47,6 +47,18 @@ java -jar target/supplygo-0.1.0-SNAPSHOT.jar client
 
 Use plain TCP only for the connection demonstration, with **Use TLS** unchecked. For sign-in and business operations, follow the [TLS certificate, account and launch instructions](docs/AUTHENTICATION.md). Both endpoints must use the same connection mode.
 
+## Load the shared local stock and accounts
+
+After building, stop the SupplyGo server and run this from the clone's root in an interactive terminal:
+
+```bash
+java -cp target/supplygo-0.1.0-SNAPSHOT.jar scripts/SeedSupplyGo.java
+```
+
+At the prompt, enter the shared password provided by the person setting up the clone, or choose a local password with 12–128 characters. The seed creates five seller logins (`sg_seller_1` through `sg_seller_5`), five supplier logins (`sg_supplier_1` through `sg_supplier_5`), their business profiles, and five inventory products. Opening stock is **12 kg Mango** and **50 kg each of Papaya, Grapes, Banana and Orange**.
+
+Run the seed before creating these products manually. Running it again with the same password preserves existing profiles and stock. If your server uses a custom data directory, pass the same directory as the last argument. Start the app with [TLS](docs/AUTHENTICATION.md). For the browser app, also follow the [web gateway guide](docs/WEB_GATEWAY.md).
+
 ## Architecture
 
 ```mermaid

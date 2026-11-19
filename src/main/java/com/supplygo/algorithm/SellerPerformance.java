@@ -1,6 +1,6 @@
 package com.supplygo.algorithm;
 
-/** Whole fruit units and number of fulfilled orders, not revenue or profit. */
+/** Whole kilograms and number of fulfilled weight-based orders. */
 public record SellerPerformance(String username, long fulfilledUnits, int fulfilledOrders) {
     public SellerPerformance {
         if (username == null || !username.matches("[a-z][a-z0-9_]{2,31}")

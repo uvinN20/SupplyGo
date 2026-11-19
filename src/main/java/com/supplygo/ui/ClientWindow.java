@@ -42,7 +42,7 @@ public final class ClientWindow extends JFrame {
     private final JButton createProduct = button("Create product", "createProduct");
     private final JButton receiveBatch = button("Receive batch", "receiveBatch");
     private final JButton withdrawStock = button("Withdraw FIFO", "withdrawStock");
-    private final JLabel inventoryStatus = new JLabel("Sign in to view inventory. Quantities are whole fruit units.");
+    private final JLabel inventoryStatus = new JLabel("Sign in to view inventory. Quantities are whole kilograms.");
     private final javax.swing.table.DefaultTableModel inventoryRows = new javax.swing.table.DefaultTableModel() {
         @Override public boolean isCellEditable(int row, int column) { return false; }
     };
@@ -159,15 +159,15 @@ public final class ClientWindow extends JFrame {
 
     private void clearInventory() {
         inventoryRows.setRowCount(0); nextOffset = -1;
-        inventoryStatus.setText("Refresh to load stock. Quantities are whole fruit units.");
+        inventoryStatus.setText("Refresh to load stock. Quantities are whole kilograms.");
     }
     private void loadInventory(int offset) {
         boolean batches = inventoryView.getSelectedIndex() == 1;
         perform("Loading inventory…", () -> client.inventoryPage(batches, offset), page -> showInventory(page, batches, offset));
     }
     private void showInventory(com.google.gson.JsonObject page, boolean batches, int offset) {
-        inventoryRows.setColumnIdentifiers(batches ? new String[]{"Batch ID", "Product ID", "Units", "Received (UTC)", "Received by"}
-                : new String[]{"Product ID", "Name", "Available", "On hand", "Reserved"});
+        inventoryRows.setColumnIdentifiers(batches ? new String[]{"Batch ID", "Product ID", "Weight (kg)", "Received (UTC)", "Received by"}
+                : new String[]{"Product ID", "Name", "Available (kg)", "On hand (kg)", "Reserved (kg)"});
         int[] widths = batches ? new int[]{70, 110, 70, 310, 140} : new int[]{100, 300, 100, 100, 100};
         for (int i = 0; i < widths.length; i++) inventoryTable.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         inventoryRows.setRowCount(0);
@@ -179,7 +179,7 @@ public final class ClientWindow extends JFrame {
             inventoryRows.addRow(values);
         }
         nextOffset = page.get("nextOffset").getAsInt();
-        inventoryStatus.setText("Page " + (offset / 10 + 1) + " • " + inventoryRows.getRowCount() + " rows • Whole fruit units • Refresh returns to page 1");
+        inventoryStatus.setText("Page " + (offset / 10 + 1) + " • " + inventoryRows.getRowCount() + " rows • Whole kilograms • Refresh returns to page 1");
     }
     private void editStock(boolean product, boolean receive) {
         JTextField id = new JTextField(24);
@@ -188,14 +188,14 @@ public final class ClientWindow extends JFrame {
         id.setName("productId"); name.setName("productName"); quantity.setName("stockQuantity");
         JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
         form.add(new JLabel("Product ID (uppercase)")); form.add(id);
-        form.add(new JLabel(product ? "Product name" : "Whole fruit units")); form.add(product ? name : quantity);
+        form.add(new JLabel(product ? "Product name" : "Whole kilograms")); form.add(product ? name : quantity);
         String title = product ? "Create product" : receive ? "Receive fruit batch" : "Withdraw oldest stock first";
         if (JOptionPane.showConfirmDialog(this, form, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
         try { quantity.commitEdit(); }
-        catch (java.text.ParseException exception) { JOptionPane.showMessageDialog(this, "Enter a whole quantity from 1 to 1000000"); return; }
+        catch (java.text.ParseException exception) { JOptionPane.showMessageDialog(this, "Enter a weight from 1 to 1,000,000 whole kg"); return; }
         String productId = id.getText().strip(); String productName = name.getText().strip();
-        int units = ((Number) quantity.getValue()).intValue();
-        perform("Saving inventory…", () -> product ? client.createProduct(productId, productName) : client.changeStock(receive, productId, units), value -> {
+        int kilograms = ((Number) quantity.getValue()).intValue();
+        perform("Saving inventory…", () -> product ? client.createProduct(productId, productName) : client.changeStock(receive, productId, kilograms), value -> {
             clearInventory(); append(title + " completed. Refresh inventory to see current stock.");
             inventoryStatus.setText(title + " saved. Click Refresh to load current stock.");
         });

@@ -12,7 +12,7 @@ public final class RankingDemo {
                 new SupplierCandidate("farm_b", 6, 20000, 25000),
                 new SupplierCandidate("farm_c", 6, 19000, 20000)), 3)
                 .forEach(System.out::println);
-        System.out.println("Illustrative seller performance: whole fulfilled units, not revenue");
+        System.out.println("Illustrative seller performance: whole kilograms fulfilled");
         SellerRanker.rank(List.of(
                 new SellerPerformance("shop_a", 300, 5),
                 new SellerPerformance("shop_b", 500, 8),

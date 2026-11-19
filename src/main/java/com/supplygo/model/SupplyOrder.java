@@ -5,11 +5,15 @@ import java.util.UUID;
 
 /** One product per order; identity and timestamps are assigned by the server. */
 public record SupplyOrder(long id, String clientOrderId, String sellerUsername, String productId,
-        int quantity, OrderStatus status, String createdAt, String updatedAt, String updatedBy) {
+        int quantity, OrderStatus status, String createdAt, String updatedAt, String updatedBy, boolean legacyCount) {
+    public SupplyOrder(long id, String clientOrderId, String sellerUsername, String productId,
+            int quantity, OrderStatus status, String createdAt, String updatedAt, String updatedBy) {
+        this(id, clientOrderId, sellerUsername, productId, quantity, status, createdAt, updatedAt, updatedBy, false);
+    }
     public SupplyOrder {
         if (id < 1 || !validClientOrderId(clientOrderId) || !validUsername(sellerUsername)
                 || productId == null || !productId.matches("[A-Z0-9_-]{1,24}")
-                || quantity < 1 || quantity > 1_000_000 || status == null || !validUsername(updatedBy))
+                || quantity < 1 || quantity > 1_000_000 || status == null || (legacyCount && status.reservesStock()) || !validUsername(updatedBy))
             throw new IllegalArgumentException("Invalid order");
         Instant created = Instant.parse(createdAt);
         Instant updated = Instant.parse(updatedAt);
