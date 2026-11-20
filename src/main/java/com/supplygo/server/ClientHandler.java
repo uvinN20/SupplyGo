@@ -1,3 +1,4 @@
+// SupplyGo guide: Processes framed TCP requests within the lifetime of one client socket.
 package com.supplygo.server;
 
 import java.io.BufferedInputStream;
@@ -66,6 +67,7 @@ public final class ClientHandler implements Runnable {
     }
 
     @Override
+// One worker reads requests, routes them and writes responses until the connection closes.
     public void run() {
         try (RequestRouter router = new RequestRouter(authentication, socket instanceof SSLSocket, inventory, orders, businessProfiles, chat, socket.getInetAddress(), routes);
                 socket;
@@ -76,6 +78,7 @@ public final class ClientHandler implements Runnable {
                 secure.startHandshake();
                 secure.setSoTimeout(SupplyGoTcpServer.IDLE_TIMEOUT_MS);
             }
+// A malformed frame ends the connection because later frame boundaries would be unreliable.
             while (!socket.isClosed()) {
                 final String frame;
                 try {

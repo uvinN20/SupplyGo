@@ -1,3 +1,4 @@
+// SupplyGo guide: Sends framed requests over a single optional-TLS TCP connection.
 package com.supplygo.client;
 
 import java.io.*;
@@ -32,6 +33,7 @@ public final class SupplyGoTcpClient implements AutoCloseable {
     }
     public boolean isSecure() { return tls != null; }
 
+// A client connects only once, and TLS verifies the remote endpoint before any application messages.
     public synchronized void connect() throws IOException {
         if (closed || connection.get() != null) throw new IOException("Client already connected or closed; create a new client to reconnect");
         Socket socket = tls == null ? new Socket() : tls.getSocketFactory().createSocket();
@@ -58,6 +60,7 @@ public final class SupplyGoTcpClient implements AutoCloseable {
         try { return message(Request.create(MessageType.QUIT), "BYE"); }
         finally { close(); }
     }
+// On successful authentication the response provides the role used for later access checks.
     public synchronized UserProfile login(String username, char[] password) throws IOException {
         return account(MessageType.LOGIN, username, password, null, "SIGNED_IN");
     }
