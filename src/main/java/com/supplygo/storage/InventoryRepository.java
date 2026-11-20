@@ -1,3 +1,4 @@
+// SupplyGo guide: Reads and updates durable product and stock records.
 package com.supplygo.storage;
 
 import java.io.IOException;

@@ -1,3 +1,4 @@
+// SupplyGo guide: Implements product and batch operations with stock validation.
 package com.supplygo.service;
 
 import java.io.IOException;
@@ -10,6 +11,7 @@ import com.supplygo.storage.InventoryRepository.State;
 
 /** Shares the repository monitor with orders: validation, allocation and save are one transaction. */
 public final class InventoryService {
+// Inventory mutations must maintain valid stock quantities even when multiple requests arrive.
     public static final int PAGE_SIZE = 10;
     private final InventoryRepository repository;
     public InventoryService(InventoryRepository repository) { this.repository = Objects.requireNonNull(repository); }

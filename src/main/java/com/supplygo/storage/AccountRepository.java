@@ -1,3 +1,4 @@
+// SupplyGo guide: Loads and persists account records used during authentication.
 package com.supplygo.storage;
 
 import java.io.IOException;

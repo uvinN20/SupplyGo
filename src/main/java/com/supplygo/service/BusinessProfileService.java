@@ -1,3 +1,4 @@
+// SupplyGo guide: Validates and manages seller and supplier business profiles.
 package com.supplygo.service;
 
 import java.io.IOException;
