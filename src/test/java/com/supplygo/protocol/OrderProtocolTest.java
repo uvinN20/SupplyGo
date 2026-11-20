@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks order fields and protocol validity rules.
 package com.supplygo.protocol;
 
 import static org.junit.jupiter.api.Assertions.*;

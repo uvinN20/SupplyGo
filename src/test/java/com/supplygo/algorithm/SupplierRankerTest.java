@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks the supplier comparator and ranking limits.
 package com.supplygo.algorithm;
 
 import static org.junit.jupiter.api.Assertions.*;

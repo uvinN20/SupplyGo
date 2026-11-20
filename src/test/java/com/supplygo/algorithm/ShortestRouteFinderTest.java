@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks Dijkstra path selection, unreachable destinations and boundary cases.
 package com.supplygo.algorithm;
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.*;
