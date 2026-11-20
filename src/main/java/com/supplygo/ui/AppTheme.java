@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Defines colors and visual styling shared across the desktop interface.
 package com.supplygo.ui;
 
 import java.awt.*;

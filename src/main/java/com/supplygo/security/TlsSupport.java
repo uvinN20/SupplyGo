@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Creates the optional TLS configuration used by network clients.
 package com.supplygo.security;
 
 import java.io.IOException;

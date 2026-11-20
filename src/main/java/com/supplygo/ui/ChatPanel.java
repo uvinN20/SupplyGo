@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Connects desktop chat controls to the asynchronous UDP client.
 package com.supplygo.ui;
 
 import java.awt.*;
@@ -54,7 +55,8 @@ final class ChatPanel extends JPanel {
         window.perform("Authorizing UDP chat…", tcp::openChat, grant -> {
             if (disposed || attempt != generation || identity == null) return;
             busy = true; controls(); status.setText("Joining UDP room…");
-            new SwingWorker<UdpChatClient, Void>() {
+            new // Background workers keep network activity away from Swing's event-dispatch thread.
+        SwingWorker<UdpChatClient, Void>() {
                 @Override protected UdpChatClient doInBackground() throws Exception {
                     var candidate = new UdpChatClient(tcp.chatAddress(), grant, value -> {
                         // The generation check is performed on the EDT when draining.

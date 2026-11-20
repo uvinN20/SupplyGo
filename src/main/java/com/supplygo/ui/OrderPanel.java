@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Displays orders and submits valid order actions through the client.
 package com.supplygo.ui;
 
 import java.awt.*;
