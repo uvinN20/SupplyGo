@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Renders reusable illustrations for the browser experience. */
 /** Decorative vector art, independent of live route/location data. */
 export default function SupplyIllustration() {
     return (

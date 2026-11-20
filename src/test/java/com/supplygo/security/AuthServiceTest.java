@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks authentication behavior and its security boundaries.
 package com.supplygo.security;
 
 import static org.junit.jupiter.api.Assertions.*;

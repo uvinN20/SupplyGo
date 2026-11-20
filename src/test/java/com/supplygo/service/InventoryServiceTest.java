@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks product stock updates and rejected invalid quantities.
 package com.supplygo.service;
 
 import static org.junit.jupiter.api.Assertions.*;

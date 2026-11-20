@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks desktop app shell behavior.
 package com.supplygo.ui;
 
 import com.supplygo.model.Role;

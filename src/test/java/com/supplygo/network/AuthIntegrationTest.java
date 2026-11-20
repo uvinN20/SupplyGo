@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Exercises sign-in and permission checks over real network exchanges.
 package com.supplygo.network;
 
 import static org.junit.jupiter.api.Assertions.*;

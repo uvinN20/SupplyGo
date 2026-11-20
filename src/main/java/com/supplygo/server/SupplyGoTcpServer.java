@@ -1,3 +1,4 @@
+// SupplyGo guide: Starts the TCP listener and limits simultaneous client handlers.
 package com.supplygo.server;
 
 import java.io.IOException;
@@ -27,6 +28,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
     private final ServerSocket listener;
     private final com.supplygo.service.RouteService routes;
     private final UdpChatServer chat;
+// The bounded thread pool uses no waiting task queue; excess connections cannot consume unbounded memory.
     private final ThreadPoolExecutor workers = new ThreadPoolExecutor(0, MAX_CLIENTS, 30, TimeUnit.SECONDS,
             new SynchronousQueue<>(), Thread.ofPlatform().name("supplygo-client-", 1).factory());
     private final Set<Socket> clients = new HashSet<>();
@@ -89,6 +91,7 @@ public final class SupplyGoTcpServer implements AutoCloseable {
 
     public int port() { return listener.getLocalPort(); }
 
+// The accept loop assigns each incoming socket to its own handler so clients can run concurrently.
     public void serve() throws IOException {
         if (!started.compareAndSet(false, true)) {
             throw new IllegalStateException("Server accept loop can only run once");

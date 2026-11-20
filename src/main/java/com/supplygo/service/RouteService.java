@@ -1,3 +1,4 @@
+// SupplyGo guide: Coordinates route graph changes and shortest-path requests.
 package com.supplygo.service;
 
 import java.io.IOException;
@@ -9,6 +10,7 @@ import com.supplygo.algorithm.ShortestRouteFinder;
 
 public final class RouteService {
     private final RouteRepository repository;
+// The service separates route validation and persistence from the graph algorithm.
     public RouteService(RouteRepository repository) { this.repository = repository; }
     private static void user(UserProfile actor, boolean write) throws AuthException {
         if (actor == null) throw new AuthException("AUTH_REQUIRED", "Sign in first");

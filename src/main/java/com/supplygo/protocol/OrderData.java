@@ -1,3 +1,4 @@
+// SupplyGo guide: Defines the network representation of an order.
 package com.supplygo.protocol;
 
 import java.util.Set;

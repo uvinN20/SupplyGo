@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Starts the HTTP gateway that connects the React UI to the Java backend.
 package com.supplygo.web;
 
 import com.supplygo.config.NetworkConfig;

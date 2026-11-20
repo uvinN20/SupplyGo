@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Represents the named locations and connecting roads.
 package com.supplygo.model;
 
 import java.util.*;

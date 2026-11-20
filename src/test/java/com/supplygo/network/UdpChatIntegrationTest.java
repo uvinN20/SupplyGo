@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks chat broadcast, packet validation and replay protection.
 package com.supplygo.network;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -54,6 +55,7 @@ class UdpChatIntegrationTest {
             }
         }
     }
+    // Deliberately malicious packets must not change server state or broadcast messages.
     @Test void forgeryReplayWrongEndpointAndMalformedPacketsAreIgnored() throws Exception {
         try (var server = new UdpChatServer(LOOP.getHostAddress(), 0)) {
             server.start(); var a = grant(server, "alice");

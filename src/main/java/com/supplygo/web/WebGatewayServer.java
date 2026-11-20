@@ -1,3 +1,4 @@
+// SupplyGo guide: Provides browser-facing HTTP endpoints backed by TCP service calls.
 package com.supplygo.web;
 
 import com.google.gson.JsonArray;
@@ -77,6 +78,7 @@ public final class WebGatewayServer implements AutoCloseable {
     public int port() { return server.getAddress().getPort(); }
     public void start() { if (closed) throw new IllegalStateException("Web gateway is closed"); server.start(); }
 
+// Central request routing applies HTTP method checks, input validation and authentication.
     private void handle(HttpExchange exchange) throws IOException {
         try (exchange) {
             securityHeaders(exchange);
@@ -533,6 +535,7 @@ public final class WebGatewayServer implements AutoCloseable {
         return quantity;
     }
 
+// Protected endpoints rely on server-managed sessions rather than accepting a role from the browser.
     private Session requireSession(HttpExchange exchange) throws ApiFailure {
         Session session = findSession(exchange);
         if (session == null) { clearCookie(exchange); throw new ApiFailure(401, "UNAUTHENTICATED", "Sign in to continue"); }

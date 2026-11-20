@@ -1,3 +1,4 @@
+// SupplyGo guide: Transfers a business profile through validated protocol fields.
 package com.supplygo.protocol;
 
 import java.util.Set;

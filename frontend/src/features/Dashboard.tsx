@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Summarizes the information relevant to the current logged-in user. */
 import {
     ArrowUpRight,
     ArrowRight,

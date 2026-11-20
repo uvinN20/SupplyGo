@@ -1,3 +1,4 @@
+// SupplyGo guide: Tracks the signed-in user and their authorized role for one connection.
 package com.supplygo.service;
 
 import java.time.Clock;

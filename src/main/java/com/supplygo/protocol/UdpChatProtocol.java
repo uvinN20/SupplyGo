@@ -1,3 +1,4 @@
+// SupplyGo guide: Defines strict UDP packet layout and verifies direction-specific message authentication.
 package com.supplygo.protocol;
 
 import java.io.IOException;
@@ -17,6 +18,7 @@ public final class UdpChatProtocol {
     private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
     private UdpChatProtocol() { }
     public record Packet(String ticket, long sequence, String payload, String signature) { }
+// The HMAC authenticates message integrity and direction; it does not encrypt chat content.
     public static byte[] encode(ChatCredentials grant, long sequence, JsonObject payload, boolean fromServer) {
         String body = ENCODER.encodeToString(JSON.toJson(payload).getBytes(StandardCharsets.UTF_8));
         String signature = ENCODER.encodeToString(mac(grant.key(), signed(grant.ticket(), sequence, body, fromServer)));
@@ -26,6 +28,7 @@ public final class UdpChatProtocol {
         if (sequence < 1 || bytes.length > MAX_PACKET) throw new IllegalArgumentException("Chat datagram exceeds limits");
         return bytes;
     }
+// Reject oversized or malformed packets before trying to authenticate their payload.
     public static Packet parse(byte[] bytes, int length) throws IOException {
         if (length < 1 || length > MAX_PACKET) throw new IOException("Invalid datagram size");
         try {

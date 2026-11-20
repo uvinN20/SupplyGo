@@ -1,3 +1,4 @@
+// SupplyGo guide: Represents authentication failures without mixing them with transport errors.
 package com.supplygo.service;
 
 public final class AuthException extends Exception {

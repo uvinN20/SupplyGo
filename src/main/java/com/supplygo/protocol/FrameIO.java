@@ -1,3 +1,4 @@
+// SupplyGo guide: Encodes and decodes bounded TCP message frames.
 package com.supplygo.protocol;
 
 import java.io.ByteArrayOutputStream;
@@ -16,6 +17,7 @@ public final class FrameIO {
     private FrameIO() { }
 
     /** Returns null only for EOF between frames; EOF within a frame is invalid. */
+// Validate the length of every incoming frame to avoid unbounded reads from an untrusted client.
     public static String read(InputStream input) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream(256);
         int value;
@@ -46,6 +48,7 @@ public final class FrameIO {
         return null;
     }
 
+// Use the same frame boundaries for outgoing replies that the reader expects.
     public static void write(OutputStream output, String frame) throws IOException {
         byte[] bytes = frame.getBytes(StandardCharsets.UTF_8);
         if (bytes.length > MAX_FRAME_BYTES || frame.indexOf('\n') >= 0 || frame.indexOf('\r') >= 0) {

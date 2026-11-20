@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Starts the desktop client and connects UI setup to configuration.
 package com.supplygo.client;
 
 import java.awt.GraphicsEnvironment;

@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Allows suppliers and sellers to manage displayed business information. */
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
     getBusinessProfile,

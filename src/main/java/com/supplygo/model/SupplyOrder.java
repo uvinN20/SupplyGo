@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Represents an order and its quantity and status.
 package com.supplygo.model;
 
 import java.time.Instant;

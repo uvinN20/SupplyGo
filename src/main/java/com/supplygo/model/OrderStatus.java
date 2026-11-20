@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Defines allowed named states of an order.
 package com.supplygo.model;
 
 public enum OrderStatus {

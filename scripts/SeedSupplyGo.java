@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Populates reproducible development data for local demonstrations.
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;

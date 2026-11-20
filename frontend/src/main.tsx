@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Mounts the React app into the HTML root element. */
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";

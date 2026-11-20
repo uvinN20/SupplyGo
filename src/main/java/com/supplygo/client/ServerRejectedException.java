@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Distinguishes application-level rejection from I/O failures.
 package com.supplygo.client;
 
 import java.io.IOException;

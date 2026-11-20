@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Configures the frontend development and production build. */
 import { defineConfig } from "vite";
 
 export default defineConfig({

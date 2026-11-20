@@ -1,3 +1,4 @@
+// SupplyGo guide: Checks connection authentication and routes commands to business services.
 package com.supplygo.server;
 
 import java.util.Arrays;
@@ -28,6 +29,7 @@ final class RequestRouter implements AutoCloseable {
     private final UdpChatServer chat;
     private final java.net.InetAddress peer;
     private String chatTicket;
+// Every connection owns its own authentication state; a different socket does not inherit this session.
     private final UserSession session = new UserSession();
 
     RequestRouter(AuthService authentication, boolean secure, InventoryService inventory,

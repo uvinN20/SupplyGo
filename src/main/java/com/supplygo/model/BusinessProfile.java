@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Represents a seller or supplier business and its stored details.
 package com.supplygo.model;
 
 import java.time.Instant;

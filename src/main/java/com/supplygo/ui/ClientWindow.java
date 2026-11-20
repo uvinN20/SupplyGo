@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Hosts the desktop window and main navigation interactions.
 package com.supplygo.ui;
 
 import java.awt.*;

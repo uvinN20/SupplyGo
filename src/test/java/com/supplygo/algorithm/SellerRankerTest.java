@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks seller ranking order, ties and invalid input handling.
 package com.supplygo.algorithm;
 
 import static org.junit.jupiter.api.Assertions.*;

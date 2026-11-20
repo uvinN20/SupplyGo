@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Compares suppliers using the ranking rules.
 package com.supplygo.algorithm;
 
 import java.util.*;

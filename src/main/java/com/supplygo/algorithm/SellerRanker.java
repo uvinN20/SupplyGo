@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Orders sellers by fulfilled volume and order count.
 package com.supplygo.algorithm;
 
 import java.util.*;

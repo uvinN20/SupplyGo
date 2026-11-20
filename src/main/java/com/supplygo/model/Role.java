@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Defines roles used to authorize business actions.
 package com.supplygo.model;
 
 public enum Role {
