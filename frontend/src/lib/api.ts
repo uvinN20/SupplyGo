@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Defines typed HTTP calls between React and the Java gateway. */
 import type { Product, Role } from "./demo";
 export type AuthUser = { username: string; role: Role };
 const csrfHeaders = {
@@ -46,6 +47,7 @@ async function readUser(response: Response): Promise<AuthUser> {
         throw new Error("SupplyGo returned an invalid account response.");
     return { username: body.username, role: roleFromApi(body.role) };
 }
+// Network helpers centralize request and response validation for feature screens.
 export async function currentSession(): Promise<AuthUser | null> {
     const response = await request("/api/session");
     if (response.status === 401) return null;

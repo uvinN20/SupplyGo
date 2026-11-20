@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Shows the route network and lets users request a shortest route. */
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
     findShortestRoute,
