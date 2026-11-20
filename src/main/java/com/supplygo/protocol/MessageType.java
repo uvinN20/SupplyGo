@@ -1,3 +1,4 @@
+// SupplyGo guide: Enumerates the request types supported by the TCP protocol.
 package com.supplygo.protocol;
 
 public enum MessageType {

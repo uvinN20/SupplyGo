@@ -1,3 +1,4 @@
+// SupplyGo guide: Serializes and validates requests and responses at the network boundary.
 package com.supplygo.protocol;
 
 import java.io.IOException;
@@ -14,6 +15,7 @@ public final class ProtocolCodec {
     private static final Gson GSON = new GsonBuilder().serializeNulls().setStrictness(Strictness.STRICT).create();
     private ProtocolCodec() { }
 
+// Encoding and decoding must agree on the exact fields used by both ends of a TCP connection.
     public static String encode(Request request) {
         JsonObject json = envelope(request.requestId());
         json.addProperty("type", request.type().name());

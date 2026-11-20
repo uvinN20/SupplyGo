@@ -1,3 +1,4 @@
+// SupplyGo guide: Reports malformed or unsupported protocol messages with an error code.
 package com.supplygo.protocol;
 
 import java.io.IOException;

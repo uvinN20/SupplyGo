@@ -1,3 +1,4 @@
+// SupplyGo guide: Transfers route graph information between clients and the server.
 package com.supplygo.protocol;
 
 import java.util.*;

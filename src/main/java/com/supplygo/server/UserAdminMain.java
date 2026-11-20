@@ -1,3 +1,4 @@
+// SupplyGo guide: Provides the command-line workflow for creating and managing user accounts.
 package com.supplygo.server;
 
 import java.io.Console;

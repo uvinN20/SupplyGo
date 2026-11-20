@@ -1,3 +1,4 @@
+// SupplyGo guide: Defines a typed command and its request attributes.
 package com.supplygo.protocol;
 
 import java.util.Objects;

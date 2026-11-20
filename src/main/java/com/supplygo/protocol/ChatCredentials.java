@@ -1,3 +1,4 @@
+// SupplyGo guide: Stores short-lived chat credentials issued through an authenticated TCP session.
 package com.supplygo.protocol;
 
 import java.time.Instant;

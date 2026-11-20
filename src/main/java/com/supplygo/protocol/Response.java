@@ -1,3 +1,4 @@
+// SupplyGo guide: Defines the status, message and payload returned for a TCP request.
 package com.supplygo.protocol;
 
 import com.google.gson.JsonObject;
