@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Lists product stock and submits inventory actions to the API. */
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
     Plus,

@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Collects account details and invokes the authentication API. */
 import { useState, type FormEvent } from "react";
 import { ArrowRight, ShieldCheck, Sparkles, Truck } from "lucide-react";
 import Brand from "../components/Brand";
