@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Dispatches command-line arguments to one of the application modes.
 package com.supplygo;
 
 import com.supplygo.client.ClientMain;

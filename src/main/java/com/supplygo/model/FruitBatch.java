@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Represents an individual stock batch and its attributes.
 package com.supplygo.model;
 
 import java.time.Instant;

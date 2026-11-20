@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Defines a product referenced by inventory and orders.
 package com.supplygo.model;
 
 /** Stock is measured in whole kilograms. */
