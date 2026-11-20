@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Demonstrates ranking with sample inputs.
 package com.supplygo.algorithm;
 
 import java.util.List;

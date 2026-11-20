@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Defines the measurable properties of a supplier.
 package com.supplygo.algorithm;
 
 /** One comparable offer for the same product, currency and whole-unit basis. */
