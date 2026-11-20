@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Verifies encoding and decoding of graph locations and roads.
 package com.supplygo.protocol;
 import static org.junit.jupiter.api.Assertions.*;
 import java.io.ByteArrayOutputStream;

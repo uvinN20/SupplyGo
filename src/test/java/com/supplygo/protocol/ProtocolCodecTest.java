@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Verifies request/reply serialization and rejection of malformed protocol fields.
 package com.supplygo.protocol;
 
 import static org.junit.jupiter.api.Assertions.*;

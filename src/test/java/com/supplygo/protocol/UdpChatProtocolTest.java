@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Verifies signed chat packets, size limits and HMAC integrity.
 package com.supplygo.protocol;
 
 import static org.junit.jupiter.api.Assertions.*;
