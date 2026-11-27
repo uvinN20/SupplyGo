@@ -1,3 +1,4 @@
+// SupplyGo guide: Receives and validates UDP chat datagrams and manages active participants.
 package com.supplygo.server;
 
 import java.io.IOException;
@@ -56,6 +57,7 @@ public final class UdpChatServer implements AutoCloseable {
         Instant now = clock.instant();
         participants.values().removeIf(p -> !now.isBefore(Instant.parse(p.grant.expiresAt())) || !now.isBefore(p.lastSeen.plusSeconds(45)));
     }
+// UDP chat receives packets independently from the TCP request loop.
     private void receive() {
         byte[] buffer = new byte[UdpChatProtocol.MAX_PACKET + 1];
         while (!closed) {
@@ -65,6 +67,7 @@ public final class UdpChatServer implements AutoCloseable {
             catch (IOException ignored) { if (socket.isClosed()) break; }
         }
     }
+// The server authenticates participant identity and checks packet ordering before relaying messages.
     private synchronized void handle(DatagramPacket datagram) {
         prune();
         try {

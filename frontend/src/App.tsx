@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Controls the authenticated app shell, page navigation and shared data refresh. */
 import { useEffect, useState, type FormEvent } from "react";
 import {
     currentSession,
@@ -52,6 +53,7 @@ const navigation: { name: string; icon: LucideIcon; phase?: string }[] = [
     { name: "Chat", icon: MessageCircle },
 ];
 export default function App() {
+    // Authentication state controls which application pages are available.
     const [session, setSession] = useState<AuthUser | null>(null);
     const [checkingSession, setCheckingSession] = useState(true);
     const [logoutError, setLogoutError] = useState("");

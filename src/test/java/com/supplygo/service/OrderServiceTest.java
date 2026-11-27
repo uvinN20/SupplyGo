@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks order ownership, creation and allowed transitions.
 package com.supplygo.service;
 
 import static org.junit.jupiter.api.Assertions.*;

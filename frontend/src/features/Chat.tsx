@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Polls the authenticated chat room and handles join, send and leave actions. */
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
@@ -17,11 +18,13 @@ export default function Chat() {
     const [draft, setDraft] = useState("");
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
+    // Cursor-based polling fetches only the chat events not previously received.
     const cursor = useRef(0);
     const endOfMessages = useRef<HTMLDivElement>(null);
     const joinedRef = useRef(joined);
     joinedRef.current = joined;
 
+    // Stop the polling loop on cleanup, and deduplicate messages when batches overlap.
     useEffect(() => {
         if (!joined) return;
         let stopped = false;

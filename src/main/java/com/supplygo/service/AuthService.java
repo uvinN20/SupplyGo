@@ -1,3 +1,4 @@
+// SupplyGo guide: Checks credentials and applies account registration and role rules.
 package com.supplygo.service;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ public final class AuthService {
     private final Clock clock;
     private record Failure(int count, Instant until) { }
 
+// Service methods validate account input before delegating persistence to the repository.
     public AuthService(AccountRepository repository) { this(repository, Clock.systemUTC()); }
     public AuthService(AccountRepository repository, Clock clock) { this.repository = repository; this.clock = clock; }
 

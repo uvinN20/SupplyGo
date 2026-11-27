@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks client/server framing, connection lifetime and TCP failure handling.
 package com.supplygo.network;
 
 import static org.junit.jupiter.api.Assertions.*;

@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Builds and coordinates the Swing desktop application shell.
 package com.supplygo.ui;
 
 import java.awt.*;

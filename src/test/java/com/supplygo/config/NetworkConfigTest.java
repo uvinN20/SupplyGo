@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks defaults, property overrides and invalid network ports.
 package com.supplygo.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

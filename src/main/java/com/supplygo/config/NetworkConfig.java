@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Loads network defaults and checks host and port overrides.
 package com.supplygo.config;
 
 import java.io.IOException;
@@ -25,6 +26,7 @@ public record NetworkConfig(String serverHost, int tcpPort, int udpPort) {
     }
 
     /** Only the named SupplyGo properties are read from the overrides. */
+    // Explicit JVM overrides take precedence over the classpath configuration file.
     public static NetworkConfig load(Properties overrides) {
         Objects.requireNonNull(overrides, "overrides");
         Properties defaults = new Properties();

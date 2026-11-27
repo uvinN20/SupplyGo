@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Renders the shared SupplyGo branding component. */
 import { Boxes } from "lucide-react";
 export default function Brand({ light = false }: { light?: boolean }) {
     return (

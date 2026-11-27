@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks business profile rules and repository integration.
 package com.supplygo.service;
 
 import static org.junit.jupiter.api.Assertions.*;

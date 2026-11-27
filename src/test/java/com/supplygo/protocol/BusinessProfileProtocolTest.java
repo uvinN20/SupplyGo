@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks conversion of business details into protocol messages.
 package com.supplygo.protocol;
 
 import static org.junit.jupiter.api.Assertions.*;

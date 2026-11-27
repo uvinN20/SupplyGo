@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Selects the highest-ranked results without changing input order.
 package com.supplygo.algorithm;
 
 import java.util.*;

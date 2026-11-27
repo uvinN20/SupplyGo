@@ -1,3 +1,4 @@
+// SupplyGo guide: Checks order creation, ownership and valid status transitions.
 package com.supplygo.service;
 
 import java.io.IOException;
@@ -12,6 +13,7 @@ import com.supplygo.storage.InventoryRepository.State;
 
 /** Orders and inventory use the same lock and persist in the same atomic snapshot. */
 public final class OrderService {
+// Order operations enforce business rules on the server, not only in the UI.
     public record Page(List<SupplyOrder> orders, int nextOffset) {
         public Page { orders = List.copyOf(orders); }
     }

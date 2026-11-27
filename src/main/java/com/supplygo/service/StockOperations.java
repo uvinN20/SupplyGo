@@ -1,3 +1,4 @@
+// SupplyGo guide: Provides shared helpers for safe inventory quantity changes.
 package com.supplygo.service;
 
 import java.util.ArrayList;

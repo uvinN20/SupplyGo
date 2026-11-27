@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Covers frontend page rendering and user flows in regression tests. */
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";

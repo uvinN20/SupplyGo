@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Shows the road network and shortest route results in the desktop client.
 package com.supplygo.ui;
 
 import java.awt.*;

@@ -1,3 +1,4 @@
+// SupplyGo test explanation: Checks desktop route UI behavior.
 package com.supplygo.ui;
 import static org.junit.jupiter.api.Assertions.*;
 import java.awt.*;

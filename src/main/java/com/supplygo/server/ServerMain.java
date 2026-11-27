@@ -1,3 +1,4 @@
+// SupplyGo guide: Builds the TCP server and its dependent services for startup.
 package com.supplygo.server;
 
 import java.io.IOException;
@@ -16,6 +17,7 @@ import com.supplygo.storage.InventoryRepository;
 /** Starts the TCP backend. TLS enables persistent account operations. */
 public final class ServerMain {
     private ServerMain() { }
+// Startup chooses network settings and injects the repositories/services needed by the server.
     public static void main(String[] args) {
         Thread shutdownHook = null;
         AccountRepository repository = null;

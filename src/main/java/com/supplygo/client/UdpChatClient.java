@@ -1,3 +1,4 @@
+// SupplyGo guide: Sends authenticated UDP commands and asynchronously receives chat messages.
 package com.supplygo.client;
 
 import java.io.IOException;
@@ -36,6 +37,7 @@ public final class UdpChatClient implements AutoCloseable {
     }
     public synchronized void heartbeat() throws IOException { request(UdpChatProtocol.command("HEARTBEAT")); }
     public synchronized void leave() throws IOException { try { request(UdpChatProtocol.command("LEAVE")); } finally { close(); } }
+// Request sequence numbers pair commands with acknowledgements and protect against stale responses.
     private String request(JsonObject payload) throws IOException {
         if (closed) throw new IOException("Chat is closed; join again");
         if (!Instant.now().isBefore(Instant.parse(grant.expiresAt()))) { close(); throw new IOException("Chat session expired; sign in again"); }
@@ -53,6 +55,7 @@ public final class UdpChatClient implements AutoCloseable {
         catch (ExecutionException exception) { throw new IOException("Chat closed", exception); }
         finally { pending.remove(id); }
     }
+// The receiver thread validates network events and forwards new messages to the UI callback.
     private void receive() {
         byte[] buffer = new byte[UdpChatProtocol.MAX_PACKET + 1];
         while (!closed) {

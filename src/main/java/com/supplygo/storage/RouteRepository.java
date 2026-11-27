@@ -1,3 +1,4 @@
+// SupplyGo guide: Stores the route network used by route planning.
 package com.supplygo.storage;
 
 import java.io.IOException;

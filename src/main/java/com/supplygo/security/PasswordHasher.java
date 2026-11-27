@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Hashes and verifies passwords without storing plaintext credentials.
 package com.supplygo.security;
 
 import java.security.GeneralSecurityException;

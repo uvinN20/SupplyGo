@@ -1,3 +1,4 @@
+// SupplyGo guide: Persists registered business profile details.
 package com.supplygo.storage;
 
 import java.io.IOException;

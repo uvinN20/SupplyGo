@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Holds seller performance statistics used in rankings.
 package com.supplygo.algorithm;
 
 /** Whole kilograms and number of fulfilled weight-based orders. */

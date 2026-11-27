@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Finds the shortest path with Dijkstra's algorithm.
 package com.supplygo.algorithm;
 
 import java.util.*;
@@ -21,12 +22,14 @@ public final class ShortestRouteFinder {
         Map<String, Long> distance = new HashMap<>(); Map<String, String> previous = new HashMap<>();
         PriorityQueue<Entry> queue = new PriorityQueue<>(Comparator.comparingLong(Entry::distance).thenComparing(Entry::id));
         distance.put(from, 0L); queue.add(new Entry(from, 0));
+        // Remove the nearest candidate; ignore stale entries left after a shorter path was found.
         while (!queue.isEmpty()) {
             Entry current = queue.poll(); if (current.distance() != distance.getOrDefault(current.id(), Long.MAX_VALUE)) continue;
             if (current.id().equals(to)) {
                 List<String> path = new ArrayList<>(); for (String id = to; id != null; id = previous.get(id)) path.add(id);
                 Collections.reverse(path); return Optional.of(new Result(path, current.distance()));
             }
+            // Relax each neighboring edge if it improves the current best distance.
             for (Edge edge : adjacency.get(current.id())) {
                 long next = Math.addExact(current.distance(), edge.meters());
                 if (next < distance.getOrDefault(edge.to(), Long.MAX_VALUE)) {

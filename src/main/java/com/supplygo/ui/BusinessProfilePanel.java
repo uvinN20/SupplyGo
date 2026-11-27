@@ -1,3 +1,4 @@
+// SupplyGo code explanation: Lets desktop users view or update their business profile.
 package com.supplygo.ui;
 
 import java.awt.*;

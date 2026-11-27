@@ -1,3 +1,4 @@
+/** SupplyGo code explanation: Supplies display-only example data used in preview scenarios. */
 export const roles = [
     "Admin",
     "Seller",
