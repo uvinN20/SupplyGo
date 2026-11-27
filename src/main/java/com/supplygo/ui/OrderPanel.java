@@ -37,9 +37,6 @@ final class OrderPanel extends JPanel {
     private UserProfile profile;
     private boolean busy;
     private int nextOffset = -1;
-    private static String displayQuantity(SupplyOrder order) {
-        return order.quantity() + (order.legacyCount() ? " fruit" : " kg");
-    }
 
     private record DraftKey(String endpoint, String seller) { }
     private final java.util.Map<DraftKey, Draft> drafts = new java.util.HashMap<>();
