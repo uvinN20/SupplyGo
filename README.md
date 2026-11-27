@@ -1,5 +1,7 @@
 # SupplyGo
 
+[![SupplyGo CI](https://github.com/uvinN20/SupplyGo/actions/workflows/maven-verify.yml/badge.svg?branch=main)](https://github.com/uvinN20/SupplyGo/actions/workflows/maven-verify.yml)
+
 A Java desktop client and concurrent TCP server for supply-chain operations. Built as a team project for **EC5205 — Operating System and Network Programming, University of Ruhuna**.
 
 **Status: in development.** The repository includes implemented desktop and browser modules plus automated tests. The browser app uses a Java HTTP gateway for live operations; see the guides below for which screens are connected.
